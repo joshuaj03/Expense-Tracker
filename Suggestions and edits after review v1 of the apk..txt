@@ -1,0 +1,19 @@
+in the add transaction page, i want the categories to be in a drop down box or like when i tap on category then a pop up or drop down should come from where i can select the category. same for  accounts since there will be multiple accounts.
+
+date and time part also should be fixed to the bottom part of the screen below the on=screen numpad( with calculator)
+
+The notes section can be a text box  a bit bigger for better visibility when ready large text or lists.
+also in the text box there should be a + button which will enable for formatting like a list, where each row will have SL (no is auto populated), item (item name), qty, price. then the sum will be calculated.
+
+along with that there will be option to check whether its a split payment/transaction or not in such a case, we can enter the number of people by clicking on the + in the counter, based on that my own individual transaction is calculated.
+
+there should be options to add more icons, fetch from online resources, the idea is that, for eg: i have amazon pay icici credit card, then the icon that looks like the card should be fetched and auto-populated.
+
+when creating an account, if its credit card it should ask for credit limit, bill generation date, and final due date before penality and give timely remainder to the user to promote timely credit bill payment and to avoid unnecessary bill payment.
+
+the user should be able to modify existing categories and accounts.
+
+the user should be able to edit and save, existing records and view it in a bigger window withing the same screen.
+
+The budget once created should be effective in all the coming months and should editable by the user whenever he wants, remove , add and modify the limit of categories in the budget.
+
