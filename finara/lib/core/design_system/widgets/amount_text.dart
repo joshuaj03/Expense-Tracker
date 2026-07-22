@@ -1,4 +1,4 @@
-/// AmountText — auto-colored currency display with sign.
+﻿/// AmountText â€” auto-colored currency display with sign.
 /// Green for positive/income, red/coral for negative/expense.
 library;
 

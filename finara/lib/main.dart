@@ -6,6 +6,7 @@ import 'core/design_system/app_theme.dart';
 import 'core/navigation/app_router.dart';
 import 'core/providers/providers.dart';
 import 'core/database/seeds.dart';
+import 'core/services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -36,6 +37,10 @@ class _FinaraAppState extends ConsumerState<FinaraApp> {
 
   Future<void> _seedData() async {
     if (_seeded) return;
+    
+    // Initialize notifications
+    await ref.read(notificationServiceProvider).init();
+    
     final dao = ref.read(categoriesDaoProvider);
     await seedDefaultCategories(
       () => dao.getAllCategories(),

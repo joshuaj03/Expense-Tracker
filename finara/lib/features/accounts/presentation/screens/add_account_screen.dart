@@ -8,6 +8,7 @@ import '../../../../core/database/enums.dart';
 import '../../../../core/design_system/app_colors.dart';
 import '../../../../core/design_system/app_typography.dart';
 import '../../../../core/providers/providers.dart';
+import '../../../../core/services/notification_service.dart';
 
 class AddAccountScreen extends ConsumerStatefulWidget {
   final int? editAccountId;
@@ -24,6 +25,12 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
   AccountType _accountType = AccountType.bank;
   int _selectedColor = AppColors.categoryPalette[0].toARGB32();
   bool _isEditing = false;
+
+  final _creditLimitController = TextEditingController();
+  final _billGenerationDayController = TextEditingController();
+  final _dueDayController = TextEditingController();
+  final _loanPrincipalController = TextEditingController();
+  final _loanInterestRateController = TextEditingController();
 
   @override
   void initState() {
@@ -46,6 +53,12 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
           orElse: () => AccountType.bank,
         );
         _selectedColor = account.color;
+        
+        _creditLimitController.text = account.creditLimit?.toString() ?? '';
+        _billGenerationDayController.text = account.billGenerationDay?.toString() ?? '';
+        _dueDayController.text = account.dueDay?.toString() ?? '';
+        _loanPrincipalController.text = account.loanOriginalPrincipal?.toString() ?? '';
+        _loanInterestRateController.text = account.loanInterestRate?.toString() ?? '';
       });
     }
   }
@@ -64,24 +77,51 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
 
     final dao = ref.read(accountsDaoProvider);
 
-    if (_isEditing) {
-      await dao.updateAccount(AccountsCompanion(
-        id: Value(widget.editAccountId!),
-        name: Value(name),
-        type: Value(_accountType.name),
-        icon: Value(_accountType.icon),
-        color: Value(_selectedColor),
-        currentBalance: Value(balance),
-      ));
+    final companion = AccountsCompanion(
+      name: Value(name),
+      type: Value(_accountType.name),
+      icon: Value(_accountType.icon),
+      color: Value(_selectedColor),
+      creditLimit: _accountType == AccountType.creditCard
+          ? Value(double.tryParse(_creditLimitController.text))
+          : const Value(null),
+      billGenerationDay: _accountType == AccountType.creditCard
+          ? Value(int.tryParse(_billGenerationDayController.text))
+          : const Value(null),
+      dueDay: _accountType == AccountType.creditCard
+          ? Value(int.tryParse(_dueDayController.text))
+          : const Value(null),
+      loanOriginalPrincipal: _accountType == AccountType.loan
+          ? Value(double.tryParse(_loanPrincipalController.text))
+          : const Value(null),
+      loanInterestRate: _accountType == AccountType.loan
+          ? Value(double.tryParse(_loanInterestRateController.text))
+          : const Value(null),
+    );
+
+    int accountId;
+    if (widget.editAccountId != null) {
+      await dao.updateAccount(
+          companion.copyWith(id: Value(widget.editAccountId!)));
+      accountId = widget.editAccountId!;
     } else {
-      await dao.insertAccount(AccountsCompanion(
-        name: Value(name),
-        type: Value(_accountType.name),
-        icon: Value(_accountType.icon),
-        color: Value(_selectedColor),
-        initialBalance: Value(balance),
-        currentBalance: Value(balance),
-      ));
+      accountId = await dao.insertAccount(
+          companion.copyWith(
+            initialBalance: Value(balance),
+            currentBalance: Value(balance),
+          ));
+    }
+
+    if (_accountType == AccountType.creditCard) {
+      final billGen = int.tryParse(_billGenerationDayController.text) ?? 1;
+      final due = int.tryParse(_dueDayController.text) ?? 20;
+      await ref.read(notificationServiceProvider).scheduleCreditCardReminders(
+            accountId: accountId,
+            accountName: name,
+            billGenerationDay: billGen,
+            dueDay: due,
+            currentDate: DateTime.now(),
+          );
     }
 
     if (mounted) context.pop();
@@ -93,11 +133,15 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
     await dao.deleteAccount(widget.editAccountId!);
     if (mounted) context.pop();
   }
-
   @override
   void dispose() {
     _nameController.dispose();
     _balanceController.dispose();
+    _creditLimitController.dispose();
+    _billGenerationDayController.dispose();
+    _dueDayController.dispose();
+    _loanPrincipalController.dispose();
+    _loanInterestRateController.dispose();
     super.dispose();
   }
 
@@ -189,6 +233,64 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
             keyboardType: const TextInputType.numberWithOptions(
                 decimal: true, signed: true),
           ),
+          
+          if (_accountType == AccountType.creditCard) ...[
+            const SizedBox(height: 20),
+            Text('Credit Card Details', style: AppTypography.labelLarge),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _creditLimitController,
+              decoration: const InputDecoration(
+                labelText: 'Credit Limit',
+                prefixText: '₹ ',
+              ),
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _billGenerationDayController,
+                    decoration: const InputDecoration(labelText: 'Bill Gen Day (1-31)'),
+                    keyboardType: TextInputType.number,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: TextField(
+                    controller: _dueDayController,
+                    decoration: const InputDecoration(labelText: 'Due Day (1-31)'),
+                    keyboardType: TextInputType.number,
+                  ),
+                ),
+              ],
+            ),
+          ],
+          
+          if (_accountType == AccountType.loan) ...[
+            const SizedBox(height: 20),
+            Text('Loan Details', style: AppTypography.labelLarge),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _loanPrincipalController,
+              decoration: const InputDecoration(
+                labelText: 'Original Principal',
+                prefixText: '₹ ',
+              ),
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _loanInterestRateController,
+              decoration: const InputDecoration(
+                labelText: 'Monthly Interest Rate',
+                suffixText: '%',
+              ),
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            ),
+          ],
+          
           const SizedBox(height: 20),
 
           // Color picker

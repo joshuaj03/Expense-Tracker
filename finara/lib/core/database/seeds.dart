@@ -1,4 +1,4 @@
-/// Default seed data for categories — pre-populated on first launch.
+﻿/// Default seed data for categories â€” pre-populated on first launch.
 library;
 
 import 'package:drift/drift.dart';
@@ -6,20 +6,20 @@ import 'app_database.dart';
 
 /// Default expense categories with curated icons and colors.
 final List<CategoriesCompanion> defaultExpenseCategories = [
-  _cat('Food & Dining', 'expense', '🍕', 0xFFFF6B6B, 0),
-  _cat('Groceries', 'expense', '🛒', 0xFFFF8E53, 1),
-  _cat('Transport', 'expense', '🚗', 0xFF4ECDC4, 2),
-  _cat('Shopping', 'expense', '🛍️', 0xFFE040FB, 3),
-  _cat('Entertainment', 'expense', '🎬', 0xFFAB47BC, 4),
-  _cat('Bills & Utilities', 'expense', '💡', 0xFFFFB74D, 5),
-  _cat('Health', 'expense', '🏥', 0xFF66BB6A, 6),
-  _cat('Education', 'expense', '📚', 0xFF42A5F5, 7),
-  _cat('Rent', 'expense', '🏠', 0xFF78909C, 8),
+  _cat('Food & Dining', 'expense', 'ðŸ•', 0xFFFF6B6B, 0),
+  _cat('Groceries', 'expense', 'ðŸ›’', 0xFFFF8E53, 1),
+  _cat('Transport', 'expense', 'ðŸš—', 0xFF4ECDC4, 2),
+  _cat('Shopping', 'expense', 'ðŸ›ï¸', 0xFFE040FB, 3),
+  _cat('Entertainment', 'expense', 'ðŸŽ¬', 0xFFAB47BC, 4),
+  _cat('Bills & Utilities', 'expense', 'ðŸ’¡', 0xFFFFB74D, 5),
+  _cat('Health', 'expense', 'ðŸ¥', 0xFF66BB6A, 6),
+  _cat('Education', 'expense', 'ðŸ“š', 0xFF42A5F5, 7),
+  _cat('Rent', 'expense', 'ðŸ ', 0xFF78909C, 8),
   _cat('Personal Care', 'expense', '💇', 0xFFEC407A, 9),
   _cat('Clothing', 'expense', '👗', 0xFFBA68C8, 10),
-  _cat('Travel', 'expense', '✈️', 0xFF26C6DA, 11),
-  _cat('Insurance', 'expense', '🛡️', 0xFF7E57C2, 12),
-  _cat('Gifts & Donations', 'expense', '🎁', 0xFFEF5350, 13),
+  _cat('Travel', 'expense', 'âœˆï¸', 0xFF26C6DA, 11),
+  _cat('Insurance', 'expense', 'ðŸ›¡ï¸', 0xFF7E57C2, 12),
+  _cat('Gifts & Donations', 'expense', 'ðŸŽ', 0xFFEF5350, 13),
   _cat('Subscriptions', 'expense', '📺', 0xFF5C6BC0, 14),
   _cat('Other', 'expense', '📌', 0xFF8D6E63, 15),
 ];
@@ -30,8 +30,8 @@ final List<CategoriesCompanion> defaultIncomeCategories = [
   _cat('Freelance', 'income', '💻', 0xFF42A5F5, 1),
   _cat('Business', 'income', '📊', 0xFF26A69A, 2),
   _cat('Investments', 'income', '📈', 0xFFAB47BC, 3),
-  _cat('Rental Income', 'income', '🏠', 0xFF78909C, 4),
-  _cat('Interest', 'income', '🏦', 0xFF5C6BC0, 5),
+  _cat('Rental Income', 'income', 'ðŸ ', 0xFF78909C, 4),
+  _cat('Interest', 'income', 'ðŸ¦', 0xFF5C6BC0, 5),
   _cat('Cashback', 'income', '🔄', 0xFFFF7043, 6),
   _cat('Other Income', 'income', '✨', 0xFF8D6E63, 7),
 ];

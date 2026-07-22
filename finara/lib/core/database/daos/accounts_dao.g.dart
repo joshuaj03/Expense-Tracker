@@ -7,6 +7,7 @@ mixin _$AccountsDaoMixin on DatabaseAccessor<AppDatabase> {
   $AccountsTable get accounts => attachedDatabase.accounts;
   $CategoriesTable get categories => attachedDatabase.categories;
   $TransactionsTable get transactions => attachedDatabase.transactions;
+  $CreditCardBillsTable get creditCardBills => attachedDatabase.creditCardBills;
   AccountsDaoManager get managers => AccountsDaoManager(this);
 }
 
@@ -19,4 +20,9 @@ class AccountsDaoManager {
       $$CategoriesTableTableManager(_db.attachedDatabase, _db.categories);
   $$TransactionsTableTableManager get transactions =>
       $$TransactionsTableTableManager(_db.attachedDatabase, _db.transactions);
+  $$CreditCardBillsTableTableManager get creditCardBills =>
+      $$CreditCardBillsTableTableManager(
+        _db.attachedDatabase,
+        _db.creditCardBills,
+      );
 }

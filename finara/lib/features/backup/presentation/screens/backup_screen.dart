@@ -1,7 +1,11 @@
-/// Backup & Restore screen — CSV export/import.
+/// Backup & Restore screen â€” CSV export/import.
 library;
 
 import 'dart:io';
+
+import 'package:csv/csv.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:drift/drift.dart' show Value;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,7 +13,8 @@ import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../../../../core/database/app_database.dart';
-import '../../../../core/database/daos/transactions_dao.dart';
+import '../../../../core/database/daos/accounts_dao.dart';
+import '../../../../core/database/daos/categories_dao.dart';
 import '../../../../core/design_system/app_colors.dart';
 import '../../../../core/design_system/app_typography.dart';
 import '../../../../core/providers/providers.dart';
@@ -82,8 +87,6 @@ class BackupScreen extends ConsumerWidget {
   Future<void> _exportCsv(BuildContext context, WidgetRef ref) async {
     try {
       final dao = ref.read(transactionsDaoProvider);
-      final categoriesDao = ref.read(categoriesDaoProvider);
-      final accountsDao = ref.read(accountsDaoProvider);
 
       final transactions =
           await dao.watchAllTransactionsWithDetails().first;
@@ -137,14 +140,124 @@ class BackupScreen extends ConsumerWidget {
   }
 
   Future<void> _importCsv(BuildContext context, WidgetRef ref) async {
-    // TODO: Implement file picker and CSV import
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('CSV import coming soon — file picker integration needed'),
-        ),
+    try {
+      final result = await FilePicker.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['csv'],
       );
+      if (result == null || result.files.isEmpty) return;
+
+      final file = File(result.files.first.path!);
+      final csvString = await file.readAsString();
+
+      final rows = Csv().decode(csvString);
+      if (rows.isEmpty) return;
+
+      final accountsDao = ref.read(accountsDaoProvider);
+      final categoriesDao = ref.read(categoriesDaoProvider);
+      final transactionsDao = ref.read(transactionsDaoProvider);
+
+      int imported = 0;
+      final dateFormat = DateFormat('MMM dd, yyyy h:mm a');
+
+      for (int i = 1; i < rows.length; i++) {
+        final row = rows[i];
+        if (row.length < 6) continue;
+
+        final timeStr = row[0].toString();
+        final typeStr = row[1].toString();
+        final amountStr = row[2].toString();
+        final categoryStr = row[3].toString();
+        final accountStr = row[4].toString();
+        final notesStr = row[5].toString();
+
+        DateTime date;
+        try {
+          date = dateFormat.parse(timeStr);
+        } catch (e) {
+          date = DateTime.now();
+        }
+
+        String type = 'expense';
+        if (typeStr.contains('Income')) type = 'income';
+        if (typeStr.contains('Transfer')) type = 'transfer';
+
+        final amount = double.tryParse(amountStr.replaceAll(',', '')) ?? 0.0;
+
+        int? fromAccountId;
+        int? toAccountId;
+        if (type == 'transfer') {
+          final parts = accountStr.split('->');
+          if (parts.length >= 2) {
+            fromAccountId = await _getOrCreateAccount(accountsDao, parts[0].trim());
+            toAccountId = await _getOrCreateAccount(accountsDao, parts[1].trim());
+          }
+        } else {
+          fromAccountId = await _getOrCreateAccount(accountsDao, accountStr.trim());
+        }
+
+        int? categoryId;
+        if (type != 'transfer' && categoryStr.trim().isNotEmpty && categoryStr.trim() != '  -  ') {
+          categoryId = await _getOrCreateCategory(categoriesDao, categoryStr.trim());
+        }
+
+        if (fromAccountId == null) continue; // Skip if no account could be resolved
+
+        await transactionsDao.insertTransaction(TransactionsCompanion.insert(
+          type: type,
+          amount: amount,
+          date: date,
+          accountId: fromAccountId,
+          toAccountId: Value(toAccountId),
+          categoryId: Value(categoryId),
+          note: Value(notesStr),
+        ));
+        imported++;
+      }
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Successfully imported $imported records'),
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Import failed: $e')),
+        );
+      }
     }
+  }
+
+  Future<int?> _getOrCreateAccount(AccountsDao dao, String name) async {
+    if (name.isEmpty) return null;
+    final accounts = await dao.getAllAccounts();
+    final existing = accounts.where((a) => a.name.toLowerCase() == name.toLowerCase()).firstOrNull;
+    if (existing != null) return existing.id;
+    return await dao.insertAccount(AccountsCompanion.insert(
+      name: name,
+      type: 'bank',
+      icon: const Value('🏦'),
+      color: const Value(0xFF6C63FF),
+      initialBalance: const Value(0.0),
+      createdAt: Value(DateTime.now()),
+    ));
+  }
+
+  Future<int?> _getOrCreateCategory(CategoriesDao dao, String name) async {
+    if (name.isEmpty) return null;
+    final categories = await dao.getAllCategories();
+    final existing = categories.where((c) => c.name.toLowerCase() == name.toLowerCase()).firstOrNull;
+    if (existing != null) return existing.id;
+    return await dao.insertCategory(CategoriesCompanion.insert(
+      name: name,
+      icon: const Value('📌'),
+      color: const Value(0xFF6C63FF),
+      type: 'expense',
+    ));
   }
 
   String _escapeCsv(String value) {

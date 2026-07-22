@@ -1,4 +1,4 @@
-/// GlassCard — frosted glassmorphism container used sparingly
+﻿/// GlassCard â€” frosted glassmorphism container used sparingly
 /// for hero sections, bottom nav, and modal sheets.
 library;
 

@@ -1,4 +1,4 @@
-/// Bottom sheet for selecting an account.
+﻿/// Bottom sheet for selecting an account.
 library;
 
 import 'package:flutter/material.dart';
@@ -11,7 +11,7 @@ import '../../../../core/utils/currency_formatter.dart';
 class AccountPickerSheet extends StatelessWidget {
   final List<Account> accounts;
   final int? selectedId;
-  final int? excludeId; // For transfers — exclude source account
+  final int? excludeId; // For transfers â€” exclude source account
   final String title;
 
   const AccountPickerSheet({

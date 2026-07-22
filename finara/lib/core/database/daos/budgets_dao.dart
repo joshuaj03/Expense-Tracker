@@ -60,8 +60,8 @@ class BudgetsDao extends DatabaseAccessor<AppDatabase>
   Future<void> upsertBudget(BudgetsCompanion budget) async {
     final existing = await getBudget(
       budget.categoryId.value,
-      budget.year.value,
-      budget.month.value,
+      budget.year.value ?? 0,
+      budget.month.value ?? 0,
     );
     if (existing != null) {
       await (update(budgets)..where((b) => b.id.equals(existing.id)))

@@ -11,6 +11,7 @@ import '../../../../core/design_system/widgets/empty_state.dart';
 import '../../../../core/providers/providers.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../core/database/daos/transactions_dao.dart';
+import '../widgets/credit_card_reminders_card.dart';
 
 /// Provider to track whether balances are hidden.
 final balanceHiddenProvider = StateProvider<bool>((ref) => false);
@@ -63,6 +64,7 @@ class DashboardScreen extends ConsumerWidget {
           children: [
             _BalanceHeroCard(),
             const SizedBox(height: 20),
+            const CreditCardRemindersCard(),
             _QuickActions(),
             const SizedBox(height: 24),
             _SectionHeader(
@@ -95,6 +97,7 @@ class _BalanceHeroCard extends ConsumerWidget {
     final accountsDao = ref.watch(accountsDaoProvider);
     final transactionsDao = ref.watch(transactionsDaoProvider);
     final isHidden = ref.watch(balanceHiddenProvider);
+    final hideOnlyTotal = ref.watch(hideOnlyTotalBalanceProvider);
     final now = DateTime.now();
 
     return StreamBuilder<double>(
@@ -166,7 +169,7 @@ class _BalanceHeroCard extends ConsumerWidget {
                             amount: income,
                             icon: Icons.arrow_downward,
                             color: AppColors.incomeLight,
-                            isHidden: isHidden,
+                            isHidden: isHidden && !hideOnlyTotal,
                           ),
                         ),
                         Container(
@@ -180,7 +183,7 @@ class _BalanceHeroCard extends ConsumerWidget {
                             amount: expense,
                             icon: Icons.arrow_upward,
                             color: AppColors.expenseLight,
-                            isHidden: isHidden,
+                            isHidden: isHidden && !hideOnlyTotal,
                           ),
                         ),
                       ],
@@ -335,7 +338,7 @@ class _RecentTransactionsList extends ConsumerWidget {
       builder: (context, snapshot) {
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
           return const EmptyState(
-            icon: '📝',
+            icon: 'ðŸ“',
             title: 'No transactions yet',
             subtitle: 'Tap + to add your first transaction',
           );
@@ -365,6 +368,9 @@ class _TransactionTile extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isHidden =
         ProviderScope.containerOf(context).read(balanceHiddenProvider);
+    final hideOnlyTotal =
+        ProviderScope.containerOf(context).read(hideOnlyTotalBalanceProvider);
+    final hideAmount = isHidden && !hideOnlyTotal;
 
     final icon = isTransfer ? '🔄' : (txn.categoryIcon ?? '📌');
     final title = isTransfer
@@ -415,7 +421,7 @@ class _TransactionTile extends StatelessWidget {
                     ],
                   ),
                 ),
-                isHidden
+                hideAmount
                     ? Text('₹ ••••',
                         style: AppTypography.currencySmall
                             .copyWith(color: AppColors.accentViolet))

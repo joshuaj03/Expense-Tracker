@@ -89,6 +89,26 @@ class SettingsScreen extends ConsumerWidget {
                   ),
                 ),
               ),
+              const Divider(height: 1),
+              Consumer(
+                builder: (context, ref, child) {
+                  final hideOnlyTotal = ref.watch(hideOnlyTotalBalanceProvider);
+                  return _SettingsTile(
+                    icon: Icons.visibility_off_outlined,
+                    title: 'Hide Only Total',
+                    subtitle: 'Show income/expense when hidden',
+                    trailing: Switch.adaptive(
+                      value: hideOnlyTotal,
+                      onChanged: (val) {
+                        ref
+                            .read(hideOnlyTotalBalanceProvider.notifier)
+                            .setHideOnlyTotal(val);
+                      },
+                      activeColor: AppColors.accentViolet,
+                    ),
+                  );
+                },
+              ),
             ],
           ),
           const SizedBox(height: 24),

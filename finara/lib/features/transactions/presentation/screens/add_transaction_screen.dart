@@ -48,6 +48,7 @@ class _AddTransactionScreenState
   bool _isSplit = false;
   int _splitPeople = 2;
   bool _splitCustomShare = false;
+  bool _isEditingCustomShare = false;
   final _customShareController = TextEditingController();
 
   bool get _isEditing => widget.editTransactionId != null;
@@ -147,16 +148,18 @@ class _AddTransactionScreenState
       notes = itemizedToText(_itemEntries);
     }
 
-    // Split info JSON
-    String splitInfo = '';
-    if (_isSplit) {
-      splitInfo = jsonEncode({
-        'totalAmount': double.tryParse(_amount) ?? 0,
-        'people': _splitPeople,
-        'myShare': _effectiveAmount,
-        'isCustom': _splitCustomShare,
-      });
+    // Itemized info JSON
+    String? itemizedInfo;
+    if (_isItemized && _itemEntries.isNotEmpty) {
+      itemizedInfo = jsonEncode(_itemEntries.map((e) => {
+        'item': e.item,
+        'qty': e.qty,
+        'price': e.price,
+      }).toList());
     }
+
+    // Split info calculation
+    double userShare = _effectiveAmount;
 
     final dao = ref.read(transactionsDaoProvider);
 
@@ -173,6 +176,10 @@ class _AddTransactionScreenState
       date: Value(_date),
       note: Value(notes),
       isExcludedFromAnalytics: Value(_type.excludedFromAnalytics),
+      isSplit: Value(_isSplit),
+      splitPeople: Value(_isSplit ? _splitPeople : null),
+      userShareAmount: Value(_isSplit ? userShare : null),
+      itemizedListJson: Value(itemizedInfo),
     );
 
     if (_isEditing) {
@@ -240,7 +247,10 @@ class _AddTransactionScreenState
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    final isKeyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
+
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.close),
@@ -267,7 +277,7 @@ class _AddTransactionScreenState
           // Scrollable top section
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+              padding: EdgeInsets.fromLTRB(16, 8, 16, 16 + MediaQuery.of(context).viewInsets.bottom),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -280,6 +290,9 @@ class _AddTransactionScreenState
                       TransactionType.income => AppColors.income,
                       TransactionType.expense => AppColors.expense,
                       TransactionType.transfer => AppColors.transfer,
+                      TransactionType.creditCardPayment => AppColors.transfer,
+                      TransactionType.loanPrincipalRepayment => AppColors.transfer,
+                      TransactionType.loanInterest => AppColors.expense,
                     },
                     onChanged: (t) => setState(() {
                       _type = t;
@@ -289,8 +302,10 @@ class _AddTransactionScreenState
                   const SizedBox(height: 20),
 
                   // Amount display
-                  Center(
-                    child: Column(
+                  GestureDetector(
+                    onTap: () => setState(() => _isEditingCustomShare = false),
+                    child: Center(
+                      child: Column(
                       children: [
                         Text(
                           _amount.isEmpty ? '₹0' : '₹$_amount',
@@ -299,8 +314,10 @@ class _AddTransactionScreenState
                             color: switch (_type) {
                               TransactionType.income => AppColors.income,
                               TransactionType.expense => AppColors.expense,
-                              TransactionType.transfer =>
-                                AppColors.transfer,
+                              TransactionType.transfer => AppColors.transfer,
+                              TransactionType.creditCardPayment => AppColors.transfer,
+                              TransactionType.loanPrincipalRepayment => AppColors.transfer,
+                              TransactionType.loanInterest => AppColors.expense,
                             },
                           ),
                         ),
@@ -315,12 +332,13 @@ class _AddTransactionScreenState
                       ],
                     ),
                   ),
+                  ),
                   const SizedBox(height: 16),
 
                   // Account selector tile
                   _PickerTile(
                     label: 'Account',
-                    icon: _selectedAccount?.icon ?? '🏦',
+                    icon: _selectedAccount?.icon ?? 'ðŸ¦',
                     value: _selectedAccount?.name ?? 'Select account',
                     onTap: () => _openAccountPicker(),
                   ),
@@ -330,7 +348,7 @@ class _AddTransactionScreenState
                     const SizedBox(height: 8),
                     _PickerTile(
                       label: 'To Account',
-                      icon: _selectedToAccount?.icon ?? '🏦',
+                      icon: _selectedToAccount?.icon ?? 'ðŸ¦',
                       value:
                           _selectedToAccount?.name ?? 'Select destination',
                       onTap: () => _openAccountPicker(isTo: true),
@@ -350,44 +368,38 @@ class _AddTransactionScreenState
                   const SizedBox(height: 16),
 
                   // Notes section
+                  Text('Notes', style: AppTypography.labelLarge),
+                  const SizedBox(height: 6),
+                  TextField(
+                    controller: _noteController,
+                    decoration: const InputDecoration(
+                      hintText: 'Add a note...',
+                      alignLabelWithHint: true,
+                    ),
+                    maxLines: 3,
+                    minLines: 2,
+                  ),
+                  const SizedBox(height: 12),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('Notes', style: AppTypography.labelLarge),
-                      Row(
-                        children: [
-                          // Itemized toggle
-                          TextButton.icon(
-                            onPressed: () {
-                              setState(() {
-                                _isItemized = !_isItemized;
-                                if (_isItemized &&
-                                    _itemEntries.isEmpty) {
-                                  _itemEntries.add(ItemEntry());
-                                }
-                              });
-                            },
-                            icon: Icon(
-                              _isItemized
-                                  ? Icons.notes
-                                  : Icons.list_alt,
-                              size: 16,
-                            ),
-                            label: Text(
-                                _isItemized ? 'Text' : 'Itemize'),
-                            style: TextButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8),
-                              visualDensity: VisualDensity.compact,
-                            ),
-                          ),
-                        ],
+                      Text('Itemized List', style: AppTypography.labelLarge),
+                      TextButton.icon(
+                        onPressed: () {
+                          setState(() {
+                            _itemEntries.add(ItemEntry());
+                          });
+                        },
+                        icon: const Icon(Icons.add, size: 16),
+                        label: const Text('Add Item'),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          visualDensity: VisualDensity.compact,
+                        ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 6),
-
-                  if (_isItemized)
+                  if (_itemEntries.isNotEmpty)
                     ItemizedNotes(
                       items: _itemEntries,
                       onTotalChanged: (total) {
@@ -395,16 +407,6 @@ class _AddTransactionScreenState
                           _amount = total.toStringAsFixed(2);
                         });
                       },
-                    )
-                  else
-                    TextField(
-                      controller: _noteController,
-                      decoration: const InputDecoration(
-                        hintText: 'Add a note...',
-                        alignLabelWithHint: true,
-                      ),
-                      maxLines: 4,
-                      minLines: 3,
                     ),
                   const SizedBox(height: 12),
 
@@ -420,6 +422,8 @@ class _AddTransactionScreenState
                         setState(() => _splitCustomShare = v),
                     customShareController: _customShareController,
                     totalAmount: double.tryParse(_amount) ?? 0,
+                    isEditingCustomShare: _isEditingCustomShare,
+                    onCustomShareTap: () => setState(() => _isEditingCustomShare = true),
                   ),
                 ],
               ),
@@ -442,14 +446,22 @@ class _AddTransactionScreenState
               child: Column(
                 children: [
                   // Numeric keypad
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-                    child: NumericKeypad(
-                      value: _amount,
-                      onValueChanged: (v) =>
-                          setState(() => _amount = v),
+                  if (!isKeyboardOpen)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                      child: NumericKeypad(
+                        value: _isEditingCustomShare ? _customShareController.text : _amount,
+                        onValueChanged: (v) {
+                          setState(() {
+                            if (_isEditingCustomShare) {
+                              _customShareController.text = v;
+                            } else {
+                              _amount = v;
+                            }
+                          });
+                        },
+                      ),
                     ),
-                  ),
                   // Date/Time row
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
@@ -638,6 +650,8 @@ class _SplitPaymentSection extends StatelessWidget {
   final ValueChanged<bool> onCustomChanged;
   final TextEditingController customShareController;
   final double totalAmount;
+  final bool isEditingCustomShare;
+  final VoidCallback onCustomShareTap;
 
   const _SplitPaymentSection({
     required this.isSplit,
@@ -648,6 +662,8 @@ class _SplitPaymentSection extends StatelessWidget {
     required this.onCustomChanged,
     required this.customShareController,
     required this.totalAmount,
+    required this.isEditingCustomShare,
+    required this.onCustomShareTap,
   });
 
   @override
@@ -676,7 +692,7 @@ class _SplitPaymentSection extends StatelessWidget {
               Switch.adaptive(
                 value: isSplit,
                 onChanged: onSplitChanged,
-                activeColor: AppColors.accentViolet,
+                activeTrackColor: AppColors.accentViolet,
               ),
             ],
           ),
@@ -739,15 +755,31 @@ class _SplitPaymentSection extends StatelessWidget {
               )
             else
               // Custom share input
-              TextField(
-                controller: customShareController,
-                decoration: const InputDecoration(
-                  labelText: 'My share amount',
-                  prefixText: '₹ ',
-                  isDense: true,
+              GestureDetector(
+                onTap: onCustomShareTap,
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.darkCard : Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isEditingCustomShare ? AppColors.accentViolet : Theme.of(context).dividerColor,
+                      width: isEditingCustomShare ? 2 : 1,
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('My share amount', style: AppTypography.labelSmall),
+                      const SizedBox(height: 4),
+                      Text(
+                        '₹ ',
+                        style: AppTypography.bodyMedium,
+                      ),
+                    ],
+                  ),
                 ),
-                keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true),
               ),
 
             const SizedBox(height: 8),

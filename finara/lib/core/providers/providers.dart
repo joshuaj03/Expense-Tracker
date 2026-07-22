@@ -54,3 +54,26 @@ class ThemeModeNotifier extends StateNotifier<int> {
     await prefs.setInt('theme_mode', mode);
   }
 }
+
+/// Setting for hiding only the total balance instead of all balances
+final hideOnlyTotalBalanceProvider =
+    StateNotifierProvider<HideOnlyTotalBalanceNotifier, bool>((ref) {
+  return HideOnlyTotalBalanceNotifier();
+});
+
+class HideOnlyTotalBalanceNotifier extends StateNotifier<bool> {
+  HideOnlyTotalBalanceNotifier() : super(false) {
+    _load();
+  }
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    state = prefs.getBool('hide_only_total') ?? false;
+  }
+
+  Future<void> setHideOnlyTotal(bool hideOnlyTotal) async {
+    state = hideOnlyTotal;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('hide_only_total', hideOnlyTotal);
+  }
+}

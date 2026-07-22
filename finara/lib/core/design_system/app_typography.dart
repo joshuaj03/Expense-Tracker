@@ -1,4 +1,4 @@
-/// Finara typography system — Manrope for display, Inter for body.
+﻿/// Finara typography system â€” Manrope for display, Inter for body.
 library;
 
 import 'package:flutter/material.dart';

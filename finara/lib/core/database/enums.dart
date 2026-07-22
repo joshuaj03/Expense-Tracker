@@ -1,4 +1,4 @@
-/// Enums used across the Finara app data model.
+﻿/// Enums used across the Finara app data model.
 library;
 
 /// Account types supported by the app.
@@ -8,7 +8,8 @@ enum AccountType {
   upi,
   wallet,
   creditCard,
-  investment;
+  investment,
+  loan;
 
   String get displayName => switch (this) {
         cash => 'Cash',
@@ -17,15 +18,17 @@ enum AccountType {
         wallet => 'Wallet',
         creditCard => 'Credit Card',
         investment => 'Investment',
+        loan => 'Loan',
       };
 
   String get icon => switch (this) {
-        cash => '💵',
-        bank => '🏦',
-        upi => '📱',
-        wallet => '👛',
-        creditCard => '💳',
+        cash => 'ðŸ’µ',
+        bank => 'ðŸ¦',
+        upi => 'ðŸ“±',
+        wallet => 'ðŸ‘›',
+        creditCard => 'ðŸ’³',
         investment => '📈',
+        loan => 'ðŸ¦',
       };
 }
 
@@ -33,19 +36,30 @@ enum AccountType {
 enum TransactionType {
   income,
   expense,
-  transfer;
+  transfer,
+  creditCardPayment,
+  loanPrincipalRepayment,
+  loanInterest;
 
   String get displayName => switch (this) {
         income => 'Income',
         expense => 'Expense',
         transfer => 'Transfer',
+        creditCardPayment => 'Credit Card Payment',
+        loanPrincipalRepayment => 'Principal Repayment',
+        loanInterest => 'Interest Payment',
       };
 
   /// Whether this transaction type should be excluded from analytics by default.
-  bool get excludedFromAnalytics => this == transfer;
+  bool get excludedFromAnalytics => switch (this) {
+        transfer => true,
+        creditCardPayment => true,
+        loanPrincipalRepayment => true,
+        _ => false,
+      };
 }
 
-/// Category type — income or expense.
+/// Category type â€” income or expense.
 enum CategoryType {
   income,
   expense;

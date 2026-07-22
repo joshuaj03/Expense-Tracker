@@ -1,4 +1,4 @@
-/// SegmentedControl — Income / Expense / Transfer selector.
+/// SegmentedControl â€” Income / Expense / Transfer selector.
 library;
 
 import 'package:flutter/material.dart';
@@ -26,26 +26,30 @@ class SegmentedControl<T> extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor = isDark ? AppColors.darkCard : AppColors.lightCard;
 
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Theme.of(context).dividerColor),
-      ),
-      child: Row(
-        children: segments.map((segment) {
-          final isSelected = segment == selected;
-          final color = colorBuilder?.call(segment) ?? AppColors.accentViolet;
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      physics: const BouncingScrollPhysics(),
+      child: Container(
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Theme.of(context).dividerColor),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: segments.map((segment) {
+            final isSelected = segment == selected;
+            final color = colorBuilder?.call(segment) ?? AppColors.accentViolet;
 
-          return Expanded(
-            child: GestureDetector(
+            return GestureDetector(
               onTap: () => onChanged(segment),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 curve: Curves.easeOutCubic,
                 padding:
-                    const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                    const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                margin: const EdgeInsets.only(right: 4),
                 decoration: BoxDecoration(
                   color: isSelected ? color.withValues(alpha: 0.15) : Colors.transparent,
                   borderRadius: BorderRadius.circular(10),
@@ -65,9 +69,9 @@ class SegmentedControl<T> extends StatelessWidget {
                   ),
                 ),
               ),
-            ),
-          );
-        }).toList(),
+            );
+          }).toList(),
+        ),
       ),
     );
   }

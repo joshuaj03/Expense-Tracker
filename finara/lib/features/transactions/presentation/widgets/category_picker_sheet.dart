@@ -1,4 +1,4 @@
-/// Bottom sheet for selecting a category.
+﻿/// Bottom sheet for selecting a category.
 library;
 
 import 'package:flutter/material.dart';

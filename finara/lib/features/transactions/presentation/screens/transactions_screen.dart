@@ -32,7 +32,7 @@ class TransactionsScreen extends ConsumerWidget {
         builder: (context, snapshot) {
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
             return const EmptyState(
-              icon: '📝',
+              icon: 'ðŸ“',
               title: 'No transactions yet',
               subtitle: 'Tap the + button to add your first transaction',
             );
@@ -155,7 +155,7 @@ class _TransactionItem extends StatelessWidget {
           child: InkWell(
             borderRadius: BorderRadius.circular(14),
             onTap: () {
-              // TODO: Transaction detail view
+              context.push('/add-transaction?editId=${t.id}');
             },
             child: Padding(
               padding: const EdgeInsets.symmetric(

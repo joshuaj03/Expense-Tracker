@@ -1,4 +1,4 @@
-/// Currency and date formatting utilities.
+﻿/// Currency and date formatting utilities.
 library;
 
 import 'package:intl/intl.dart';

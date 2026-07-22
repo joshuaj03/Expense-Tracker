@@ -17,6 +17,7 @@ import '../../features/categories/presentation/screens/categories_screen.dart';
 import '../../features/budgets/presentation/screens/budgets_screen.dart';
 import '../../features/search/presentation/screens/search_screen.dart';
 import '../../features/backup/presentation/screens/backup_screen.dart';
+import '../../features/developer_log/presentation/screens/developer_log_screen.dart';
 import '../design_system/app_colors.dart';
 import 'app_drawer.dart';
 
@@ -26,7 +27,7 @@ final appRouter = GoRouter(
   navigatorKey: _rootNavigatorKey,
   initialLocation: '/dashboard',
   routes: [
-    // Bottom navigation shell — 5 tabs
+    // Bottom navigation shell â€” 5 tabs
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) {
         return _AppShell(navigationShell: navigationShell);
@@ -142,6 +143,11 @@ final appRouter = GoRouter(
       path: '/backup',
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) => const BackupScreen(),
+    ),
+    GoRoute(
+      path: '/dev-log',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const DeveloperLogScreen(),
     ),
   ],
 );

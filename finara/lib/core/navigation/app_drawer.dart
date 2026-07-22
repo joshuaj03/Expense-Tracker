@@ -1,4 +1,4 @@
-/// App drawer — side navigation for Settings, Backup & Restore, About.
+/// App drawer â€” side navigation for Settings, Backup & Restore, About.
 library;
 
 import 'package:flutter/material.dart';
@@ -80,6 +80,15 @@ class AppDrawer extends StatelessWidget {
                 context.push('/categories');
               },
             ),
+            const Divider(),
+            _DrawerItem(
+              icon: Icons.bug_report_outlined,
+              label: 'Developer Log',
+              onTap: () {
+                Navigator.pop(context);
+                context.push('/dev-log');
+              },
+            ),
 
             const Spacer(),
 
@@ -87,7 +96,7 @@ class AppDrawer extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.all(20),
               child: Text(
-                'v0.2.0 Alpha',
+                'v0.0.20 Alpha',
                 style: AppTypography.labelSmall,
               ),
             ),

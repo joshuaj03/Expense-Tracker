@@ -1,4 +1,4 @@
-/// BudgetProgressBar — gradient fill with over-budget state.
+﻿/// BudgetProgressBar â€” gradient fill with over-budget state.
 library;
 
 import 'package:flutter/material.dart';

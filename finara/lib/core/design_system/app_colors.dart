@@ -1,4 +1,4 @@
-/// Finara color system — dark-first with full light mode parity.
+﻿/// Finara color system â€” dark-first with full light mode parity.
 library;
 
 import 'package:flutter/material.dart';

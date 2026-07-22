@@ -1,4 +1,4 @@
-/// Itemized notes widget — structured list with SL, Item, Qty, Price columns.
+﻿/// Itemized notes widget â€” structured list with SL, Item, Qty, Price columns.
 library;
 
 import 'package:flutter/material.dart';
@@ -17,7 +17,7 @@ class ItemEntry {
   double get total => qty * price;
 
   @override
-  String toString() => '$item × $qty = ₹${price.toStringAsFixed(2)}';
+  String toString() => '$item Ã— $qty = ₹${price.toStringAsFixed(2)}';
 }
 
 class ItemizedNotes extends StatefulWidget {
@@ -268,7 +268,7 @@ String itemizedToText(List<ItemEntry> items) {
   for (int i = 0; i < items.length; i++) {
     final e = items[i];
     if (e.item.isNotEmpty) {
-      buffer.writeln('${i + 1}. ${e.item} × ${e.qty} = ₹${e.price.toStringAsFixed(2)}');
+      buffer.writeln('${i + 1}. ${e.item} Ã— ${e.qty} = ₹${e.price.toStringAsFixed(2)}');
     }
   }
   final total = items.fold<double>(0, (s, e) => s + e.total);

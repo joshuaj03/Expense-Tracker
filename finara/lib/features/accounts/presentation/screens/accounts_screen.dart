@@ -32,7 +32,7 @@ class AccountsScreen extends ConsumerWidget {
         builder: (context, snapshot) {
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
             return EmptyState(
-              icon: '🏦',
+              icon: 'ðŸ¦',
               title: 'No accounts yet',
               subtitle: 'Add your first account to start tracking',
               action: FilledButton.icon(
@@ -124,6 +124,16 @@ class AccountsScreen extends ConsumerWidget {
                                   const SizedBox(height: 2),
                                   Text(account.type.toUpperCase(),
                                       style: AppTypography.labelSmall),
+                                  if (account.type == 'creditCard' && account.creditLimit != null) ...[
+                                    const SizedBox(height: 2),
+                                    Text('Limit: ${CurrencyFormatter.format(account.creditLimit!)} • Due: Day ${account.dueDay ?? '?'}',
+                                        style: AppTypography.labelSmall.copyWith(color: AppColors.accentViolet)),
+                                  ],
+                                  if (account.type == 'loan' && account.loanOriginalPrincipal != null) ...[
+                                    const SizedBox(height: 2),
+                                    Text('Principal: ${CurrencyFormatter.format(account.loanOriginalPrincipal!)} • ${account.loanInterestRate ?? 0}% /mo',
+                                        style: AppTypography.labelSmall.copyWith(color: AppColors.accentViolet)),
+                                  ],
                                 ],
                               ),
                             ),

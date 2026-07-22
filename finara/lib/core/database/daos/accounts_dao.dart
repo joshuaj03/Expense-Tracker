@@ -4,7 +4,7 @@ import '../tables.dart';
 
 part 'accounts_dao.g.dart';
 
-@DriftAccessor(tables: [Accounts, Transactions])
+@DriftAccessor(tables: [Accounts, Transactions, CreditCardBills])
 class AccountsDao extends DatabaseAccessor<AppDatabase>
     with _$AccountsDaoMixin {
   AccountsDao(super.db);
@@ -66,5 +66,35 @@ class AccountsDao extends DatabaseAccessor<AppDatabase>
       ..addColumns([accounts.currentBalance.sum()]);
     return query.watchSingle().map(
         (row) => row.read(accounts.currentBalance.sum()) ?? 0.0);
+  }
+
+  /// Mark a credit card bill as paid for a given month/year
+  Future<void> markBillAsPaid(int accountId, int month, int year) async {
+    // Check if exists
+    final existing = await (select(creditCardBills)
+          ..where((b) =>
+              b.accountId.equals(accountId) &
+              b.billingMonth.equals(month) &
+              b.billingYear.equals(year)))
+        .getSingleOrNull();
+
+    if (existing != null) {
+      await (update(creditCardBills)..where((b) => b.id.equals(existing.id)))
+          .write(const CreditCardBillsCompanion(isPaid: Value(true)));
+    } else {
+      await into(creditCardBills).insert(CreditCardBillsCompanion(
+        accountId: Value(accountId),
+        billingMonth: Value(month),
+        billingYear: Value(year),
+        isPaid: const Value(true),
+      ));
+    }
+  }
+
+  /// Watch unpaid bills (needs manual cross-referencing with current date in UI)
+  Stream<List<CreditCardBill>> watchBillsForAccount(int accountId) {
+    return (select(creditCardBills)
+          ..where((b) => b.accountId.equals(accountId)))
+        .watch();
   }
 }

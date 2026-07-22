@@ -1,4 +1,4 @@
-/// Finara theme — dark-first, full light mode parity, system-follow.
+﻿/// Finara theme â€” dark-first, full light mode parity, system-follow.
 library;
 
 import 'package:flutter/material.dart';

@@ -1,4 +1,4 @@
-/// EmptyState — friendly placeholder for empty lists/screens.
+﻿/// EmptyState â€” friendly placeholder for empty lists/screens.
 library;
 
 import 'package:flutter/material.dart';

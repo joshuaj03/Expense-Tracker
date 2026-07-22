@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/database/daos/transactions_dao.dart';
@@ -64,7 +64,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       ),
       body: _query.isEmpty
           ? const EmptyState(
-              icon: '🔍',
+              icon: 'ðŸ”',
               title: 'Search your records',
               subtitle:
                   'Search by notes, categories, or account names',
@@ -74,7 +74,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               builder: (context, snapshot) {
                 if (!snapshot.hasData || snapshot.data!.isEmpty) {
                   return const EmptyState(
-                    icon: '🤷',
+                    icon: 'ðŸ¤·',
                     title: 'No results found',
                     subtitle: 'Try a different search term',
                   );

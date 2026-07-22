@@ -1,4 +1,4 @@
-import 'package:drift/drift.dart' hide Column;
+﻿import 'package:drift/drift.dart' hide Column;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -63,9 +63,9 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen>
                   spacing: 8,
                   runSpacing: 8,
                   children: [
-                    '🍕', '🛒', '🚗', '🛍️', '🎬', '💡', '🏥', '📚',
-                    '🏠', '💇', '👗', '✈️', '🛡️', '🎁', '📺', '💰',
-                    '💻', '📊', '📈', '🔄', '🏦', '✨', '📌', '🎯',
+                    'ðŸ•', 'ðŸ›’', 'ðŸš—', 'ðŸ›ï¸', 'ðŸŽ¬', 'ðŸ’¡', 'ðŸ¥', 'ðŸ“š',
+                    'ðŸ ', '💇', '👗', 'âœˆï¸', 'ðŸ›¡ï¸', 'ðŸŽ', '📺', '💰',
+                    '💻', '📊', '📈', '🔄', 'ðŸ¦', '✨', '📌', '🎯',
                   ].map((emoji) {
                     final isSelected = emoji == selectedIcon;
                     return GestureDetector(
@@ -196,7 +196,7 @@ class _CategoryList extends StatelessWidget {
       builder: (context, snapshot) {
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
           return const EmptyState(
-            icon: '📁',
+            icon: 'ðŸ“',
             title: 'No categories',
             subtitle: 'Tap + to add a category',
           );
