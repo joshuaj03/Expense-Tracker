@@ -15,8 +15,8 @@ This is a complete redesign and overhaul of the Accounts tab in Finara, focusing
 - **AccountsDao**: Implemented logic for `toggleIgnoreAccount` and `hardDeleteAccount` (which gracefully cleans up linked transactions). Modified queries like `watchTotalBalance` to filter out ignored accounts.
 - **TransactionsDao**: Ensured that global tracking queries filter out transactions from ignored accounts.
 - **Credit Card Service**: Updated the bill generation to calculate real `billAmount`s from expenses within the billing period.
-- **UI Redesign**: Overhauled `accounts_screen.dart` with a cleaner sticky header, dynamic timeview summaries, and 3-dot action menus.
-- **Account Detail Screen**: Created `account_detail_screen.dart` for granular view of individual account history and associated actions.
+- **UI Redesign**: Overhauled `accounts_screen.dart` with a cleaner sticky header, dynamic timeview summaries, and 3-dot action menus. Fixed scrolling overlap bugs in the sticky header for monthly toggles.
+- **Account Detail Screen**: Created `account_detail_screen.dart` for granular view of individual account history and associated actions. Moved Credit Card bill history into an interactive bottom sheet popup with robust fallback displays for uncalculated amounts.
 
 ## What's left to build
 - **Loan Management**: B2 phase needs to be built to summarize total interest paid, remaining principal, and an algorithm estimating payoff time based on historical payments.

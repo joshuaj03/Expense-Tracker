@@ -14,8 +14,9 @@ Building "Finara"—a personalized, offline-first Expense Tracker & Budgeting ap
   - Upgraded Drift database schema to v4 to support account exclusions and computed credit card `billAmount`.
 
 ## 📍 Current Exact State
-We have successfully built, tested, and polished the **Accounts Module Redesign**. The UI gracefully handles dynamic summaries and excluded accounts. The latest APK `Finara_v0.1.0-alpha.2_build_2.apk` has been built and delivered for the user's manual sanity check. 
-We are moving iteratively through the remaining features.
+We have successfully built, tested, and polished the **Accounts Module Redesign**. Recent fixes include migrating active development to the `develop` branch, moving credit card billing history into a smooth bottom sheet popup, resolving time view header overlap during scrolling, and ensuring bill amount fallbacks handle older data gracefully. 
+The latest APK `Finara_v0.1.0-alpha.2_build_5.apk` has been built and delivered for the user's manual sanity check. 
+We are moving iteratively through the remaining features on the `develop` branch.
 
 ## 🚀 Pending Tasks (Up Next)
 1. **B2: Loan Management (Next Immediate Task)**
@@ -30,3 +31,4 @@ We are moving iteratively through the remaining features.
 - **APK Naming Scheme:** Final APKs follow a strict naming scheme, currently around `Finara_v0.1.0-alpha.2_build_x.apk`.
 - **Offline First:** All data is stored via Drift SQLite locally.
 - **UI Constraints:** Avoid overflow errors by using `Flexible`/`Expanded` with `maxLines: 2` and `TextOverflow.ellipsis` on long data fields like account names.
+- **Git Branching:** Active development happens on the `develop` branch. The `main` branch is strictly reserved for stable releases.
