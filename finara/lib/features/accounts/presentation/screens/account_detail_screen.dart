@@ -125,54 +125,21 @@ class AccountDetailScreen extends ConsumerWidget {
                           
                           // Billing history if Credit Card
                           if (account.type == 'creditCard') ...[
-                            Text('Billing History', style: AppTypography.labelLarge),
-                            const SizedBox(height: 10),
-                            StreamBuilder<List<CreditCardBill>>(
-                              stream: accountDao.watchBillsForAccount(accountId),
-                              builder: (context, billSnapshot) {
-                                if (!billSnapshot.hasData) return const SizedBox();
-                                final bills = billSnapshot.data!.toList();
-                                if (bills.isEmpty) {
-                                  return const Text('No bills generated yet.');
-                                }
-                                
-                                bills.sort((a, b) {
-                                  final aVal = a.billingYear * 12 + a.billingMonth;
-                                  final bVal = b.billingYear * 12 + b.billingMonth;
-                                  return bVal.compareTo(aVal);
-                                });
-                                
-                                return Column(
-                                  children: bills.map((bill) {
-                                    final monthStr = [
-                                      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-                                      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-                                    ][bill.billingMonth - 1];
-                                    return ListTile(
-                                      contentPadding: EdgeInsets.zero,
-                                      title: Text('$monthStr ${bill.billingYear} Statement'),
-                                      subtitle: bill.billAmount != null 
-                                          ? Text('Amount: ${CurrencyFormatter.format(bill.billAmount!)}') 
-                                          : null,
-                                      trailing: Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                                        decoration: BoxDecoration(
-                                          color: bill.isPaid ? AppColors.income.withValues(alpha: 0.1) : AppColors.expense.withValues(alpha: 0.1),
-                                          borderRadius: BorderRadius.circular(12),
-                                        ),
-                                        child: Text(
-                                          bill.isPaid ? 'PAID' : 'UNPAID',
-                                          style: TextStyle(
-                                            color: bill.isPaid ? AppColors.income : AppColors.expense,
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ),
-                                    );
-                                  }).toList(),
-                                );
-                              },
+                            Center(
+                              child: OutlinedButton.icon(
+                                onPressed: () {
+                                  showModalBottomSheet(
+                                    context: context,
+                                    isScrollControlled: true,
+                                    shape: const RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                                    ),
+                                    builder: (ctx) => _BillHistorySheet(accountId: accountId),
+                                  );
+                                },
+                                icon: const Icon(Icons.history),
+                                label: const Text('View Bill History'),
+                              ),
                             ),
                             const SizedBox(height: 24),
                           ],
@@ -269,6 +236,104 @@ class AccountDetailScreen extends ConsumerWidget {
           );
         },
       ),
+    );
+  }
+}
+
+class _BillHistorySheet extends ConsumerWidget {
+  final int accountId;
+
+  const _BillHistorySheet({required this.accountId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final accountDao = ref.watch(accountsDaoProvider);
+    
+    return DraggableScrollableSheet(
+      initialChildSize: 0.6,
+      minChildSize: 0.4,
+      maxChildSize: 0.9,
+      expand: false,
+      builder: (context, scrollController) {
+        return Container(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Billing History', style: AppTypography.headlineSmall),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: StreamBuilder<List<CreditCardBill>>(
+                  stream: accountDao.watchBillsForAccount(accountId),
+                  builder: (context, billSnapshot) {
+                    if (billSnapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    if (!billSnapshot.hasData) return const SizedBox();
+                    final bills = billSnapshot.data!.toList();
+                    if (bills.isEmpty) {
+                      return const Center(child: Text('No bills generated yet.'));
+                    }
+                    
+                    bills.sort((a, b) {
+                      final aVal = a.billingYear * 12 + a.billingMonth;
+                      final bVal = b.billingYear * 12 + b.billingMonth;
+                      return bVal.compareTo(aVal);
+                    });
+                    
+                    return ListView.separated(
+                      controller: scrollController,
+                      itemCount: bills.length,
+                      separatorBuilder: (context, index) => const Divider(),
+                      itemBuilder: (context, index) {
+                        final bill = bills[index];
+                        final monthStr = [
+                          'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                          'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+                        ][bill.billingMonth - 1];
+                        return ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: Text('$monthStr ${bill.billingYear} Statement', style: AppTypography.bodyLarge.copyWith(fontWeight: FontWeight.w600)),
+                          subtitle: bill.billAmount != null 
+                              ? Padding(
+                                  padding: const EdgeInsets.only(top: 4.0),
+                                  child: Text('Amount: ${CurrencyFormatter.format(bill.billAmount!)}'),
+                                )
+                              : null,
+                          trailing: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: bill.isPaid ? AppColors.income.withValues(alpha: 0.1) : AppColors.expense.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              bill.isPaid ? 'PAID' : 'UNPAID',
+                              style: TextStyle(
+                                color: bill.isPaid ? AppColors.income : AppColors.expense,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
