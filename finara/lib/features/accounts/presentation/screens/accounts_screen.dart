@@ -46,6 +46,7 @@ class AccountsScreen extends ConsumerWidget {
             pinned: true,
             delegate: _TimeViewHeaderDelegate(
               child: _TimeViewHeader(timeState: timeState, ref: ref),
+              isMonthly: timeState.view == RecordsTimeView.monthly,
             ),
           ),
           
@@ -365,14 +366,15 @@ class _TotalItem extends StatelessWidget {
 
 class _TimeViewHeaderDelegate extends SliverPersistentHeaderDelegate {
   final Widget child;
+  final bool isMonthly;
 
-  _TimeViewHeaderDelegate({required this.child});
-
-  @override
-  double get minExtent => 72.0;
+  _TimeViewHeaderDelegate({required this.child, required this.isMonthly});
 
   @override
-  double get maxExtent => 110.0; // Extra space for MonthToggleBtn if active
+  double get minExtent => isMonthly ? 116.0 : 72.0;
+
+  @override
+  double get maxExtent => isMonthly ? 116.0 : 72.0;
 
   @override
   Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
@@ -380,8 +382,8 @@ class _TimeViewHeaderDelegate extends SliverPersistentHeaderDelegate {
   }
 
   @override
-  bool shouldRebuild(covariant SliverPersistentHeaderDelegate oldDelegate) {
-    return true;
+  bool shouldRebuild(covariant _TimeViewHeaderDelegate oldDelegate) {
+    return isMonthly != oldDelegate.isMonthly || true;
   }
 }
 
