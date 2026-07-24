@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -489,7 +491,30 @@ class _TransactionItem extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Center(
-                      child: Text(icon, style: const TextStyle(fontSize: 20)),
+                      child: icon.startsWith('http')
+                          ? (icon.endsWith('.svg')
+                              ? SvgPicture.network(
+                                  icon,
+                                  width: 24,
+                                  height: 24,
+                                  colorFilter: ColorFilter.mode(
+                                    Theme.of(context).iconTheme.color ?? Colors.black,
+                                    BlendMode.srcIn,
+                                  ),
+                                )
+                              : ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: CachedNetworkImage(
+                                    imageUrl: icon,
+                                    width: 24,
+                                    height: 24,
+                                    errorWidget: (c, u, e) => const Text(
+                                      '📌',
+                                      style: TextStyle(fontSize: 20),
+                                    ),
+                                  ),
+                                ))
+                          : Text(icon, style: const TextStyle(fontSize: 20)),
                     ),
                   ),
                   const SizedBox(width: 12),

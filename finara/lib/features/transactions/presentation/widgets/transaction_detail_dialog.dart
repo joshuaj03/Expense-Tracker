@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:finara/core/design_system/app_colors.dart';
 import 'package:finara/core/design_system/app_typography.dart';
 import 'package:finara/core/design_system/widgets/amount_text.dart';
@@ -49,7 +51,30 @@ class TransactionDetailDialog extends ConsumerWidget {
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: Center(
-                    child: Text(icon, style: const TextStyle(fontSize: 24)),
+                    child: icon.startsWith('http')
+                        ? (icon.endsWith('.svg')
+                            ? SvgPicture.network(
+                                icon,
+                                width: 28,
+                                height: 28,
+                                colorFilter: ColorFilter.mode(
+                                  Theme.of(context).iconTheme.color ?? Colors.black,
+                                  BlendMode.srcIn,
+                                ),
+                              )
+                            : ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: CachedNetworkImage(
+                                  imageUrl: icon,
+                                  width: 28,
+                                  height: 28,
+                                  errorWidget: (c, u, e) => const Text(
+                                    '📌',
+                                    style: TextStyle(fontSize: 24),
+                                  ),
+                                ),
+                              ))
+                        : Text(icon, style: const TextStyle(fontSize: 24)),
                   ),
                 ),
                 Row(

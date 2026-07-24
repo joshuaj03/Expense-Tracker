@@ -11,6 +11,8 @@ import 'package:finara/features/transactions/data/transactions_provider.dart';
 import 'package:finara/features/transactions/data/records_time_view_provider.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../core/design_system/widgets/amount_text.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class AccountsScreen extends ConsumerWidget {
   const AccountsScreen({super.key});
@@ -20,7 +22,7 @@ class AccountsScreen extends ConsumerWidget {
     final dao = ref.watch(accountsDaoProvider);
     final txDao = ref.watch(transactionsDaoProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     final timeState = ref.watch(recordsTimeViewNotifierProvider);
     final (start, end) = timeState.getDateRange();
 
@@ -49,7 +51,7 @@ class AccountsScreen extends ConsumerWidget {
               isMonthly: timeState.view == RecordsTimeView.monthly,
             ),
           ),
-          
+
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -63,11 +65,14 @@ class AccountsScreen extends ConsumerWidget {
                       return StreamBuilder<({double income, double expense})>(
                         stream: txDao.watchTotalsForDateRange(start, end),
                         builder: (context, txSnapshot) {
-                          final totals = txSnapshot.data ?? (income: 0.0, expense: 0.0);
+                          final totals =
+                              txSnapshot.data ?? (income: 0.0, expense: 0.0);
                           return Container(
                             padding: const EdgeInsets.all(20),
                             decoration: BoxDecoration(
-                              color: isDark ? AppColors.darkCard : AppColors.lightCard,
+                              color: isDark
+                                  ? AppColors.darkCard
+                                  : AppColors.lightCard,
                               borderRadius: BorderRadius.circular(16),
                               border: Border.all(
                                 color: Theme.of(context).dividerColor,
@@ -76,17 +81,23 @@ class AccountsScreen extends ConsumerWidget {
                             ),
                             child: Column(
                               children: [
-                                Text('All Accounts Balance', style: AppTypography.labelMedium),
+                                Text(
+                                  'All Accounts Balance',
+                                  style: AppTypography.labelMedium,
+                                ),
                                 const SizedBox(height: 4),
                                 Text(
                                   CurrencyFormatter.format(totalBalance),
                                   style: AppTypography.currencyLarge.copyWith(
-                                    color: Theme.of(context).textTheme.bodyLarge?.color,
+                                    color: Theme.of(
+                                      context,
+                                    ).textTheme.bodyLarge?.color,
                                   ),
                                 ),
                                 const SizedBox(height: 16),
                                 Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceAround,
                                   children: [
                                     _TotalItem(
                                       label: 'Income',
@@ -103,9 +114,9 @@ class AccountsScreen extends ConsumerWidget {
                               ],
                             ),
                           );
-                        }
+                        },
                       );
-                    }
+                    },
                   ),
                   const SizedBox(height: 24),
                   Align(
@@ -117,14 +128,17 @@ class AccountsScreen extends ConsumerWidget {
               ),
             ),
           ),
-          
+
           StreamBuilder<List<Account>>(
             stream: dao.watchAllAccounts(),
             builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
-                return const SliverFillRemaining(child: Center(child: CircularProgressIndicator()));
+              if (snapshot.connectionState == ConnectionState.waiting &&
+                  !snapshot.hasData) {
+                return const SliverFillRemaining(
+                  child: Center(child: CircularProgressIndicator()),
+                );
               }
-              
+
               final accounts = snapshot.data ?? [];
               if (accounts.isEmpty) {
                 return SliverFillRemaining(
@@ -145,189 +159,284 @@ class AccountsScreen extends ConsumerWidget {
               return SliverPadding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
                 sliver: SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      final account = accounts[index];
-                      final isIgnored = account.isIgnored;
-                      
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        child: Material(
-                          color: isDark ? AppColors.darkCard : AppColors.lightCard,
+                  delegate: SliverChildBuilderDelegate((context, index) {
+                    final account = accounts[index];
+                    final isIgnored = account.isIgnored;
+
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      child: Material(
+                        color: isDark
+                            ? AppColors.darkCard
+                            : AppColors.lightCard,
+                        borderRadius: BorderRadius.circular(14),
+                        child: InkWell(
                           borderRadius: BorderRadius.circular(14),
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(14),
-                            onTap: () => context.push('/account/${account.id}'),
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Row(
-                                children: [
-                                  Opacity(
-                                    opacity: isIgnored ? 0.4 : 1.0,
-                                    child: Container(
-                                      width: 44,
-                                      height: 44,
-                                      decoration: BoxDecoration(
-                                        color: Color(account.color).withValues(alpha: 0.15),
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      child: Center(
-                                        child: Text(
-                                          isIgnored ? '🚫' : account.icon,
-                                          style: const TextStyle(fontSize: 22),
-                                        ),
-                                      ),
+                          onTap: () => context.push('/account/${account.id}'),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Row(
+                              children: [
+                                Opacity(
+                                  opacity: isIgnored ? 0.4 : 1.0,
+                                  child: Container(
+                                    width: 44,
+                                    height: 44,
+                                    decoration: BoxDecoration(
+                                      color: Color(
+                                        account.color,
+                                      ).withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Center(
+                                      child: isIgnored
+                                          ? const Text(
+                                              '🚫',
+                                              style: TextStyle(fontSize: 22),
+                                            )
+                                          : account.icon.startsWith('http')
+                                          ? (account.icon.endsWith('.svg')
+                                              ? SvgPicture.network(
+                                                  account.icon,
+                                                  width: 24,
+                                                  height: 24,
+                                                  colorFilter: ColorFilter.mode(
+                                                    Theme.of(context).iconTheme.color ?? Colors.black,
+                                                    BlendMode.srcIn,
+                                                  ),
+                                                )
+                                              : ClipRRect(
+                                                  borderRadius: BorderRadius.circular(12),
+                                                  child: CachedNetworkImage(
+                                                    imageUrl: account.icon,
+                                                    width: 24,
+                                                    height: 24,
+                                                    errorWidget: (c, u, e) => const Text(
+                                                      '🏦',
+                                                      style: TextStyle(fontSize: 22),
+                                                    ),
+                                                  ),
+                                                ))
+                                          : Text(
+                                              account.icon,
+                                              style: const TextStyle(
+                                                fontSize: 22,
+                                              ),
+                                            ),
                                     ),
                                   ),
-                                  const SizedBox(width: 14),
-                                  Expanded(
-                                    child: Opacity(
-                                      opacity: isIgnored ? 0.4 : 1.0,
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            account.name,
-                                            style: AppTypography.bodyMedium.copyWith(
-                                              fontWeight: FontWeight.w600,
-                                              decoration: isIgnored ? TextDecoration.lineThrough : null,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            account.type.toUpperCase() + (isIgnored ? ' (IGNORED)' : ''),
-                                            style: AppTypography.labelSmall,
-                                          ),
-                                          if (!isIgnored && account.type == 'creditCard' && account.creditLimit != null && account.creditLimit! > 0) ...[
-                                            const SizedBox(height: 4),
-                                            Builder(builder: (context) {
-                                              final utilization = (account.currentBalance.abs() / account.creditLimit!).clamp(0.0, 1.0);
-                                              final utilColor = utilization > 0.7
+                                ),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: Opacity(
+                                    opacity: isIgnored ? 0.4 : 1.0,
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          account.name,
+                                          style: AppTypography.bodyMedium
+                                              .copyWith(
+                                                fontWeight: FontWeight.w600,
+                                                decoration: isIgnored
+                                                    ? TextDecoration.lineThrough
+                                                    : null,
+                                              ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          account.type.toUpperCase() +
+                                              (isIgnored ? ' (IGNORED)' : ''),
+                                          style: AppTypography.labelSmall,
+                                        ),
+                                        if (!isIgnored &&
+                                            account.type == 'creditCard' &&
+                                            account.creditLimit != null &&
+                                            account.creditLimit! > 0) ...[
+                                          const SizedBox(height: 4),
+                                          Builder(
+                                            builder: (context) {
+                                              final utilization =
+                                                  (account.currentBalance
+                                                              .abs() /
+                                                          account.creditLimit!)
+                                                      .clamp(0.0, 1.0);
+                                              final utilColor =
+                                                  utilization > 0.7
                                                   ? AppColors.expense
                                                   : utilization > 0.3
-                                                      ? Colors.orange
-                                                      : AppColors.income;
+                                                  ? Colors.orange
+                                                  : AppColors.income;
                                               return Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
                                                 children: [
                                                   Row(
-                                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                    mainAxisAlignment:
+                                                        MainAxisAlignment
+                                                            .spaceBetween,
                                                     children: [
                                                       Text(
                                                         'Limit: ${CurrencyFormatter.format(account.creditLimit!)} \u2022 Due: Day ${account.dueDay ?? '?'}',
-                                                        style: AppTypography.labelSmall.copyWith(
-                                                          color: AppColors.accentViolet,
-                                                        ),
+                                                        style: AppTypography
+                                                            .labelSmall
+                                                            .copyWith(
+                                                              color: AppColors
+                                                                  .accentViolet,
+                                                            ),
                                                       ),
                                                       Text(
                                                         '${(utilization * 100).toStringAsFixed(1)}%',
-                                                        style: AppTypography.labelSmall.copyWith(
-                                                          color: utilColor,
-                                                          fontWeight: FontWeight.bold,
-                                                        ),
+                                                        style: AppTypography
+                                                            .labelSmall
+                                                            .copyWith(
+                                                              color: utilColor,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                            ),
                                                       ),
                                                     ],
                                                   ),
                                                   const SizedBox(height: 6),
                                                   ClipRRect(
-                                                    borderRadius: BorderRadius.circular(4),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          4,
+                                                        ),
                                                     child: LinearProgressIndicator(
                                                       value: utilization,
-                                                      backgroundColor: Theme.of(context).dividerColor.withValues(alpha: 0.1),
+                                                      backgroundColor:
+                                                          Theme.of(context)
+                                                              .dividerColor
+                                                              .withValues(
+                                                                alpha: 0.1,
+                                                              ),
                                                       minHeight: 6,
-                                                      valueColor: AlwaysStoppedAnimation<Color>(utilColor),
+                                                      valueColor:
+                                                          AlwaysStoppedAnimation<
+                                                            Color
+                                                          >(utilColor),
                                                     ),
                                                   ),
                                                 ],
                                               );
-                                            }),
-                                          ],
-                                          if (!isIgnored && account.type == 'loan' && account.loanOriginalPrincipal != null) ...[
-                                            const SizedBox(height: 2),
-                                            Text(
-                                              'Principal: ${CurrencyFormatter.format(account.loanOriginalPrincipal!)} \u2022 ${account.loanInterestRate ?? 0}% /mo',
-                                              style: AppTypography.labelSmall.copyWith(
-                                                color: AppColors.accentViolet,
+                                            },
+                                          ),
+                                        ],
+                                        if (!isIgnored &&
+                                            account.type == 'loan' &&
+                                            account.loanOriginalPrincipal !=
+                                                null) ...[
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            'Principal: ${CurrencyFormatter.format(account.loanOriginalPrincipal!)} \u2022 ${account.loanInterestRate ?? 0}% /mo',
+                                            style: AppTypography.labelSmall
+                                                .copyWith(
+                                                  color: AppColors.accentViolet,
+                                                ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                Opacity(
+                                  opacity: isIgnored ? 0.4 : 1.0,
+                                  child: Text(
+                                    CurrencyFormatter.format(
+                                      account.currentBalance,
+                                    ),
+                                    style: AppTypography.currencySmall.copyWith(
+                                      color: account.currentBalance >= 0
+                                          ? AppColors.income
+                                          : AppColors.expense,
+                                    ),
+                                  ),
+                                ),
+                                // 3-dots Menu
+                                PopupMenuButton<String>(
+                                  icon: const Icon(Icons.more_vert, size: 20),
+                                  onSelected: (value) async {
+                                    if (value == 'edit') {
+                                      context.push(
+                                        '/edit-account/${account.id}',
+                                      );
+                                    } else if (value == 'ignore') {
+                                      await dao.toggleIgnoreAccount(
+                                        account.id,
+                                        !isIgnored,
+                                      );
+                                    } else if (value == 'delete') {
+                                      // Show Delete Prompt
+                                      showDialog(
+                                        context: context,
+                                        builder: (ctx) => AlertDialog(
+                                          title: const Text('Delete Account'),
+                                          content: const Text(
+                                            'Do you want to permanently delete this account and all its past records, or just softly delete it (archive)?',
+                                          ),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () =>
+                                                  Navigator.pop(ctx),
+                                              child: const Text('Cancel'),
+                                            ),
+                                            TextButton(
+                                              onPressed: () async {
+                                                Navigator.pop(ctx);
+                                                await dao.archiveAccount(
+                                                  account.id,
+                                                );
+                                              },
+                                              child: const Text('Soft Delete'),
+                                            ),
+                                            TextButton(
+                                              onPressed: () async {
+                                                Navigator.pop(ctx);
+                                                await dao.hardDeleteAccount(
+                                                  account.id,
+                                                );
+                                              },
+                                              style: TextButton.styleFrom(
+                                                foregroundColor:
+                                                    AppColors.expense,
                                               ),
+                                              child: const Text('Hard Delete'),
                                             ),
                                           ],
-                                        ],
+                                        ),
+                                      );
+                                    }
+                                  },
+                                  itemBuilder: (context) => [
+                                    const PopupMenuItem(
+                                      value: 'edit',
+                                      child: Text('Edit'),
+                                    ),
+                                    PopupMenuItem(
+                                      value: 'ignore',
+                                      child: Text(
+                                        isIgnored ? 'Un-Ignore' : 'Ignore',
                                       ),
                                     ),
-                                  ),
-                                  Opacity(
-                                    opacity: isIgnored ? 0.4 : 1.0,
-                                    child: Text(
-                                      CurrencyFormatter.format(account.currentBalance),
-                                      style: AppTypography.currencySmall.copyWith(
-                                        color: account.currentBalance >= 0 ? AppColors.income : AppColors.expense,
+                                    const PopupMenuItem(
+                                      value: 'delete',
+                                      child: Text(
+                                        'Delete',
+                                        style: TextStyle(color: Colors.red),
                                       ),
                                     ),
-                                  ),
-                                  // 3-dots Menu
-                                  PopupMenuButton<String>(
-                                    icon: const Icon(Icons.more_vert, size: 20),
-                                    onSelected: (value) async {
-                                      if (value == 'edit') {
-                                        context.push('/edit-account/${account.id}');
-                                      } else if (value == 'ignore') {
-                                        await dao.toggleIgnoreAccount(account.id, !isIgnored);
-                                      } else if (value == 'delete') {
-                                        // Show Delete Prompt
-                                        showDialog(
-                                          context: context,
-                                          builder: (ctx) => AlertDialog(
-                                            title: const Text('Delete Account'),
-                                            content: const Text('Do you want to permanently delete this account and all its past records, or just softly delete it (archive)?'),
-                                            actions: [
-                                              TextButton(
-                                                onPressed: () => Navigator.pop(ctx),
-                                                child: const Text('Cancel'),
-                                              ),
-                                              TextButton(
-                                                onPressed: () async {
-                                                  Navigator.pop(ctx);
-                                                  await dao.archiveAccount(account.id);
-                                                },
-                                                child: const Text('Soft Delete'),
-                                              ),
-                                              TextButton(
-                                                onPressed: () async {
-                                                  Navigator.pop(ctx);
-                                                  await dao.hardDeleteAccount(account.id);
-                                                },
-                                                style: TextButton.styleFrom(foregroundColor: AppColors.expense),
-                                                child: const Text('Hard Delete'),
-                                              ),
-                                            ],
-                                          )
-                                        );
-                                      }
-                                    },
-                                    itemBuilder: (context) => [
-                                      const PopupMenuItem(
-                                        value: 'edit',
-                                        child: Text('Edit'),
-                                      ),
-                                      PopupMenuItem(
-                                        value: 'ignore',
-                                        child: Text(isIgnored ? 'Un-Ignore' : 'Ignore'),
-                                      ),
-                                      const PopupMenuItem(
-                                        value: 'delete',
-                                        child: Text('Delete', style: TextStyle(color: Colors.red)),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
+                                  ],
+                                ),
+                              ],
                             ),
                           ),
                         ),
-                      );
-                    },
-                    childCount: accounts.length,
-                  ),
+                      ),
+                    );
+                  }, childCount: accounts.length),
                 ),
               );
             },
@@ -377,7 +486,11 @@ class _TimeViewHeaderDelegate extends SliverPersistentHeaderDelegate {
   double get maxExtent => isMonthly ? 116.0 : 72.0;
 
   @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
     return child;
   }
 
@@ -469,9 +582,14 @@ class _TimeViewHeader extends StatelessWidget {
                             .read(recordsTimeViewNotifierProvider.notifier)
                             .resetToToday(),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
-                            color: AppColors.accentViolet.withValues(alpha: 0.1),
+                            color: AppColors.accentViolet.withValues(
+                              alpha: 0.1,
+                            ),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(

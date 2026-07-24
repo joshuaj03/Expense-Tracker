@@ -1,12 +1,14 @@
-import 'package:drift/drift.dart' hide Column;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../../../core/database/app_database.dart';
 import '../../../../core/design_system/app_colors.dart';
 import '../../../../core/design_system/app_typography.dart';
 import '../../../../core/design_system/widgets/empty_state.dart';
 import 'package:finara/features/categories/data/categories_provider.dart';
+import '../widgets/add_category_dialog.dart';
 
 class CategoriesScreen extends ConsumerStatefulWidget {
   const CategoriesScreen({super.key});
@@ -32,147 +34,9 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen>
   }
 
   void _showAddCategoryDialog(String type) {
-    final nameController = TextEditingController();
-    String selectedIcon = type == 'expense' ? '📌' : '💰';
-    int selectedColor = AppColors.categoryPalette[0].toARGB32();
-
     showDialog(
       context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          title: Text(
-            'Add ${type == 'income' ? 'Income' : 'Expense'} Category',
-          ),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                TextField(
-                  controller: nameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Category Name',
-                    hintText: 'e.g. Groceries',
-                  ),
-                  autofocus: true,
-                  textCapitalization: TextCapitalization.words,
-                ),
-                const SizedBox(height: 16),
-                Text('Icon', style: AppTypography.labelMedium),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children:
-                      [
-                        'ðŸ\u2022',
-                        '🛒',
-                        '🚗',
-                        'ðŸ›ï¸',
-                        '🎬',
-                        '💡',
-                        'ðŸ¥',
-                        '📚',
-                        'ðŸ ',
-                        '💇',
-                        '👗',
-                        'âœˆï¸',
-                        'ðŸ›¡ï¸',
-                        'ðŸŽ',
-                        '📺',
-                        '💰',
-                        '💻',
-                        '📊',
-                        '📈',
-                        '🔄',
-                        'ðŸ¦',
-                        '✨',
-                        '📌',
-                        '🎯',
-                      ].map((emoji) {
-                        final isSelected = emoji == selectedIcon;
-                        return GestureDetector(
-                          onTap: () =>
-                              setDialogState(() => selectedIcon = emoji),
-                          child: Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? AppColors.accentViolet.withValues(
-                                      alpha: 0.2,
-                                    )
-                                  : Colors.transparent,
-                              borderRadius: BorderRadius.circular(8),
-                              border: isSelected
-                                  ? Border.all(color: AppColors.accentViolet)
-                                  : null,
-                            ),
-                            child: Center(
-                              child: Text(
-                                emoji,
-                                style: const TextStyle(fontSize: 22),
-                              ),
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                ),
-                const SizedBox(height: 16),
-                Text('Color', style: AppTypography.labelMedium),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: AppColors.categoryPalette.take(12).map((color) {
-                    final isSelected = color.toARGB32() == selectedColor;
-                    return GestureDetector(
-                      onTap: () => setDialogState(
-                        () => selectedColor = color.toARGB32(),
-                      ),
-                      child: Container(
-                        width: 32,
-                        height: 32,
-                        decoration: BoxDecoration(
-                          color: color,
-                          shape: BoxShape.circle,
-                          border: isSelected
-                              ? Border.all(color: Colors.white, width: 2.5)
-                              : null,
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () async {
-                final name = nameController.text.trim();
-                if (name.isEmpty) return;
-
-                final dao = ref.read(categoriesDaoProvider);
-                await dao.insertCategory(
-                  CategoriesCompanion(
-                    name: Value(name),
-                    type: Value(type),
-                    icon: Value(selectedIcon),
-                    color: Value(selectedColor),
-                  ),
-                );
-                if (ctx.mounted) Navigator.pop(ctx);
-              },
-              child: const Text('Add'),
-            ),
-          ],
-        ),
-      ),
+      builder: (ctx) => AddCategoryDialog(type: type),
     );
   }
 
@@ -225,7 +89,7 @@ class _CategoryList extends StatelessWidget {
       builder: (context, snapshot) {
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
           return const EmptyState(
-            icon: 'ðŸ“',
+            icon: '📂',
             title: 'No categories',
             subtitle: 'Tap + to add a category',
           );
@@ -256,10 +120,33 @@ class _CategoryList extends StatelessWidget {
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Center(
-                      child: Text(
-                        cat.icon,
-                        style: const TextStyle(fontSize: 20),
-                      ),
+                      child: cat.icon.startsWith('http')
+                          ? (cat.icon.endsWith('.svg')
+                              ? SvgPicture.network(
+                                  cat.icon,
+                                  width: 24,
+                                  height: 24,
+                                  colorFilter: ColorFilter.mode(
+                                    Theme.of(context).iconTheme.color ?? Colors.black,
+                                    BlendMode.srcIn,
+                                  ),
+                                )
+                              : ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: CachedNetworkImage(
+                                    imageUrl: cat.icon,
+                                    width: 24,
+                                    height: 24,
+                                    errorWidget: (c, u, e) => const Text(
+                                      '📌',
+                                      style: TextStyle(fontSize: 20),
+                                    ),
+                                  ),
+                                ))
+                          : Text(
+                              cat.icon,
+                              style: const TextStyle(fontSize: 20),
+                            ),
                     ),
                   ),
                   title: Text(

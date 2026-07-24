@@ -7,6 +7,8 @@ import '../../../../core/database/app_database.dart';
 import '../../../../core/design_system/app_colors.dart';
 import '../../../../core/design_system/app_typography.dart';
 import '../../../../core/utils/currency_formatter.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class AccountPickerSheet extends StatelessWidget {
   final List<Account> accounts;
@@ -91,10 +93,33 @@ class AccountPickerSheet extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Center(
-                                child: Text(
-                                  account.icon,
-                                  style: const TextStyle(fontSize: 20),
-                                ),
+                                child: account.icon.startsWith('http')
+                                    ? (account.icon.endsWith('.svg')
+                                        ? SvgPicture.network(
+                                            account.icon,
+                                            width: 24,
+                                            height: 24,
+                                            colorFilter: ColorFilter.mode(
+                                              Theme.of(context).iconTheme.color ?? Colors.black,
+                                              BlendMode.srcIn,
+                                            ),
+                                          )
+                                        : ClipRRect(
+                                            borderRadius: BorderRadius.circular(12),
+                                            child: CachedNetworkImage(
+                                              imageUrl: account.icon,
+                                              width: 24,
+                                              height: 24,
+                                              errorWidget: (c, u, e) => const Text(
+                                                '🏦',
+                                                style: TextStyle(fontSize: 20),
+                                              ),
+                                            ),
+                                          ))
+                                    : Text(
+                                        account.icon,
+                                        style: const TextStyle(fontSize: 20),
+                                      ),
                               ),
                             ),
                             const SizedBox(width: 14),

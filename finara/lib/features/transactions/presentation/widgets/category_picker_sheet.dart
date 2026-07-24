@@ -1,7 +1,9 @@
 /// Bottom sheet for selecting a category.
 library;
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../../core/database/app_database.dart';
 import '../../../../core/design_system/app_colors.dart';
@@ -123,7 +125,30 @@ class _CategoryPickerSheetState extends State<CategoryPickerSheet> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text(cat.icon, style: const TextStyle(fontSize: 24)),
+                        cat.icon.startsWith('http')
+                            ? (cat.icon.endsWith('.svg')
+                                ? SvgPicture.network(
+                                    cat.icon,
+                                    width: 32,
+                                    height: 32,
+                                    colorFilter: ColorFilter.mode(
+                                      Theme.of(context).iconTheme.color ?? Colors.black,
+                                      BlendMode.srcIn,
+                                    ),
+                                  )
+                                : ClipRRect(
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: CachedNetworkImage(
+                                      imageUrl: cat.icon,
+                                      width: 32,
+                                      height: 32,
+                                      errorWidget: (c, u, e) => const Text(
+                                        '📌',
+                                        style: TextStyle(fontSize: 24),
+                                      ),
+                                    ),
+                                  ))
+                            : Text(cat.icon, style: const TextStyle(fontSize: 24)),
                         const SizedBox(height: 6),
                         Text(
                           cat.name,

@@ -7,6 +7,7 @@ import '../../../../core/design_system/app_typography.dart';
 import 'package:finara/features/settings/data/theme_provider.dart';
 import 'package:finara/features/settings/data/privacy_provider.dart';
 import 'package:finara/features/settings/data/currency_provider.dart';
+import 'package:finara/features/settings/data/ui_preferences_provider.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -142,6 +143,30 @@ class SettingsScreen extends ConsumerWidget {
                         ref
                             .read(hideOnlyTotalBalanceNotifierProvider.notifier)
                             .setHideOnlyTotal(val);
+                      },
+                      activeColor: AppColors.accentViolet,
+                    ),
+                  );
+                },
+              ),
+              const Divider(height: 1),
+              Consumer(
+                builder: (context, ref, child) {
+                  final sideBySideUI = ref.watch(
+                    sideBySideTransactionUINotifierProvider,
+                  );
+                  return _SettingsTile(
+                    icon: Icons.view_sidebar_outlined,
+                    title: 'Compact Transaction UI',
+                    subtitle: 'Show account & category side-by-side',
+                    trailing: Switch.adaptive(
+                      value: sideBySideUI,
+                      onChanged: (val) {
+                        ref
+                            .read(
+                              sideBySideTransactionUINotifierProvider.notifier,
+                            )
+                            .setSideBySide(val);
                       },
                       activeColor: AppColors.accentViolet,
                     ),

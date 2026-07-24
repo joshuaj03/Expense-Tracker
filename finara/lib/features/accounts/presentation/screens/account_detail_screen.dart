@@ -49,7 +49,10 @@ class AccountDetailScreen extends ConsumerWidget {
 
           return StreamBuilder<List<TransactionWithDetails>>(
             stream: txDao.watchTransactionsForAccountAndDateRange(
-                accountId, start, end),
+              accountId,
+              start,
+              end,
+            ),
             builder: (context, txSnapshot) {
               if (txSnapshot.connectionState == ConnectionState.waiting &&
                   !txSnapshot.hasData) {
@@ -85,13 +88,16 @@ class AccountDetailScreen extends ConsumerWidget {
                                 width: 56,
                                 height: 56,
                                 decoration: BoxDecoration(
-                                  color: Color(account.color)
-                                      .withValues(alpha: 0.15),
+                                  color: Color(
+                                    account.color,
+                                  ).withValues(alpha: 0.15),
                                   borderRadius: BorderRadius.circular(16),
                                 ),
                                 child: Center(
-                                  child: Text(account.icon,
-                                      style: const TextStyle(fontSize: 28)),
+                                  child: Text(
+                                    account.icon,
+                                    style: const TextStyle(fontSize: 28),
+                                  ),
                                 ),
                               ),
                               const SizedBox(width: 16),
@@ -115,14 +121,23 @@ class AccountDetailScreen extends ConsumerWidget {
                             ],
                           ),
                           const SizedBox(height: 24),
-                          
+
                           // Net Amount
-                          Text('Net Amount (${timeState.view.name})', style: AppTypography.labelMedium),
+                          Text(
+                            'Net Amount (${timeState.view.name})',
+                            style: AppTypography.labelMedium,
+                          ),
                           const SizedBox(height: 4),
-                          AmountText(amount: netAmount, size: AmountSize.large, overrideColor: netAmount >= 0 ? AppColors.income : AppColors.expense),
-                          
+                          AmountText(
+                            amount: netAmount,
+                            size: AmountSize.large,
+                            overrideColor: netAmount >= 0
+                                ? AppColors.income
+                                : AppColors.expense,
+                          ),
+
                           const SizedBox(height: 24),
-                          
+
                           // Billing history if Credit Card
                           if (account.type == 'creditCard') ...[
                             Center(
@@ -132,9 +147,12 @@ class AccountDetailScreen extends ConsumerWidget {
                                     context: context,
                                     isScrollControlled: true,
                                     shape: const RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                                      borderRadius: BorderRadius.vertical(
+                                        top: Radius.circular(20),
+                                      ),
                                     ),
-                                    builder: (ctx) => _BillHistorySheet(accountId: accountId),
+                                    builder: (ctx) =>
+                                        _BillHistorySheet(accountId: accountId),
                                   );
                                 },
                                 icon: const Icon(Icons.history),
@@ -148,8 +166,14 @@ class AccountDetailScreen extends ConsumerWidget {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text('Transactions', style: AppTypography.labelLarge),
-                              Text('${transactions.length} records', style: AppTypography.labelSmall),
+                              Text(
+                                'Transactions',
+                                style: AppTypography.labelLarge,
+                              ),
+                              Text(
+                                '${transactions.length} records',
+                                style: AppTypography.labelSmall,
+                              ),
                             ],
                           ),
                           const Divider(),
@@ -170,65 +194,66 @@ class AccountDetailScreen extends ConsumerWidget {
                     )
                   else
                     SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) {
-                          final item = transactions[index];
-                          final txn = item.transaction;
-                          final isIncome = txn.type == 'income';
-                          final isTransfer = txn.type == 'transfer' || txn.type == 'creditCardPayment';
+                      delegate: SliverChildBuilderDelegate((context, index) {
+                        final item = transactions[index];
+                        final txn = item.transaction;
+                        final isIncome = txn.type == 'income';
+                        final isTransfer =
+                            txn.type == 'transfer' ||
+                            txn.type == 'creditCardPayment';
 
-                          return ListTile(
-                            onTap: () {
-                              showDialog(
-                                context: context,
-                                builder: (context) => TransactionDetailDialog(
-                                  txn: item,
-                                ),
-                              );
-                            },
-                            leading: Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                color: isTransfer
-                                    ? AppColors.accentViolet.withValues(alpha: 0.1)
-                                    : (item.categoryColor != null
+                        return ListTile(
+                          onTap: () {
+                            showDialog(
+                              context: context,
+                              builder: (context) =>
+                                  TransactionDetailDialog(txn: item),
+                            );
+                          },
+                          leading: Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: isTransfer
+                                  ? AppColors.accentViolet.withValues(
+                                      alpha: 0.1,
+                                    )
+                                  : (item.categoryColor != null
                                             ? Color(item.categoryColor!)
                                             : Colors.grey)
                                         .withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(10),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Center(
+                              child: Text(
+                                isTransfer ? '↔️' : (item.categoryIcon ?? '📄'),
+                                style: const TextStyle(fontSize: 20),
                               ),
-                              child: Center(
-                                child: Text(
-                                  isTransfer ? '↔️' : (item.categoryIcon ?? '📄'),
-                                  style: const TextStyle(fontSize: 20),
-                                ),
-                              ),
                             ),
-                            title: Text(
-                              isTransfer
-                                  ? 'Transfer to ${item.toAccountName}'
-                                  : (item.categoryName ?? 'Uncategorized'),
-                              style: AppTypography.bodyMedium
-                                  .copyWith(fontWeight: FontWeight.w500),
+                          ),
+                          title: Text(
+                            isTransfer
+                                ? 'Transfer to ${item.toAccountName}'
+                                : (item.categoryName ?? 'Uncategorized'),
+                            style: AppTypography.bodyMedium.copyWith(
+                              fontWeight: FontWeight.w500,
                             ),
-                            subtitle: Text(
-                              '${txn.date.day}/${txn.date.month}/${txn.date.year}',
-                              style: AppTypography.labelSmall,
-                            ),
-                            trailing: AmountText(
-                              amount: txn.amount,
-                              size: AmountSize.medium,
-                              overrideColor: isTransfer
-                                  ? AppColors.lightTextPrimary
-                                  : (isIncome
+                          ),
+                          subtitle: Text(
+                            '${txn.date.day}/${txn.date.month}/${txn.date.year}',
+                            style: AppTypography.labelSmall,
+                          ),
+                          trailing: AmountText(
+                            amount: txn.amount,
+                            size: AmountSize.medium,
+                            overrideColor: isTransfer
+                                ? AppColors.lightTextPrimary
+                                : (isIncome
                                       ? AppColors.income
                                       : AppColors.expense),
-                            ),
-                          );
-                        },
-                        childCount: transactions.length,
-                      ),
+                          ),
+                        );
+                      }, childCount: transactions.length),
                     ),
                 ],
               );
@@ -248,7 +273,7 @@ class _BillHistorySheet extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final accountDao = ref.watch(accountsDaoProvider);
-    
+
     return DraggableScrollableSheet(
       initialChildSize: 0.6,
       minChildSize: 0.4,
@@ -275,21 +300,24 @@ class _BillHistorySheet extends ConsumerWidget {
                 child: StreamBuilder<List<CreditCardBill>>(
                   stream: accountDao.watchBillsForAccount(accountId),
                   builder: (context, billSnapshot) {
-                    if (billSnapshot.connectionState == ConnectionState.waiting) {
+                    if (billSnapshot.connectionState ==
+                        ConnectionState.waiting) {
                       return const Center(child: CircularProgressIndicator());
                     }
                     if (!billSnapshot.hasData) return const SizedBox();
                     final bills = billSnapshot.data!.toList();
                     if (bills.isEmpty) {
-                      return const Center(child: Text('No bills generated yet.'));
+                      return const Center(
+                        child: Text('No bills generated yet.'),
+                      );
                     }
-                    
+
                     bills.sort((a, b) {
                       final aVal = a.billingYear * 12 + a.billingMonth;
                       final bVal = b.billingYear * 12 + b.billingMonth;
                       return bVal.compareTo(aVal);
                     });
-                    
+
                     return ListView.separated(
                       controller: scrollController,
                       itemCount: bills.length,
@@ -297,26 +325,50 @@ class _BillHistorySheet extends ConsumerWidget {
                       itemBuilder: (context, index) {
                         final bill = bills[index];
                         final monthStr = [
-                          'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-                          'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+                          'Jan',
+                          'Feb',
+                          'Mar',
+                          'Apr',
+                          'May',
+                          'Jun',
+                          'Jul',
+                          'Aug',
+                          'Sep',
+                          'Oct',
+                          'Nov',
+                          'Dec',
                         ][bill.billingMonth - 1];
                         return ListTile(
                           contentPadding: EdgeInsets.zero,
-                          title: Text('$monthStr ${bill.billingYear} Statement', style: AppTypography.bodyLarge.copyWith(fontWeight: FontWeight.w600)),
+                          title: Text(
+                            '$monthStr ${bill.billingYear} Statement',
+                            style: AppTypography.bodyLarge.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                           subtitle: Padding(
                             padding: const EdgeInsets.only(top: 4.0),
-                            child: Text('Amount: ${CurrencyFormatter.format(bill.billAmount ?? 0.0)}'),
+                            child: Text(
+                              'Amount: ${CurrencyFormatter.format(bill.billAmount ?? 0.0)}',
+                            ),
                           ),
                           trailing: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
                             decoration: BoxDecoration(
-                              color: bill.isPaid ? AppColors.income.withValues(alpha: 0.1) : AppColors.expense.withValues(alpha: 0.1),
+                              color: bill.isPaid
+                                  ? AppColors.income.withValues(alpha: 0.1)
+                                  : AppColors.expense.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Text(
                               bill.isPaid ? 'PAID' : 'UNPAID',
                               style: TextStyle(
-                                color: bill.isPaid ? AppColors.income : AppColors.expense,
+                                color: bill.isPaid
+                                    ? AppColors.income
+                                    : AppColors.expense,
                                 fontSize: 12,
                                 fontWeight: FontWeight.bold,
                               ),

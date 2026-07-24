@@ -1,7 +1,10 @@
 import 'dart:convert';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import 'package:drift/drift.dart' hide Column;
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -19,6 +22,8 @@ import '../widgets/category_picker_sheet.dart';
 import '../widgets/account_picker_sheet.dart';
 import '../widgets/itemized_notes.dart';
 import '../../../../core/utils/logger.dart';
+import 'package:finara/features/settings/data/ui_preferences_provider.dart';
+import 'package:intl/intl.dart';
 
 class AddTransactionScreen extends ConsumerStatefulWidget {
   final int? editTransactionId;
@@ -48,7 +53,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   List<Category> _categories = [];
 
   // Itemized mode
-  bool _isItemized = false;
+
   final List<ItemEntry> _itemEntries = [];
 
   // Split mode
@@ -57,6 +62,12 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   bool _splitCustomShare = false;
   bool _isEditingCustomShare = false;
   final _customShareController = TextEditingController();
+
+  // Dynamic fields
+  bool _isCreditCardBill = false;
+  DateTime _billingMonth = DateTime.now();
+  bool _isLoanInterest = false;
+  bool _includePrincipalInAnalytics = false;
 
   bool get _isEditing => widget.editTransactionId != null;
 
@@ -92,10 +103,23 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       final txn = await dao.getTransactionById(idToLoad);
       if (txn != null) {
         setState(() {
-          _type = TransactionType.values.firstWhere(
+          final dbType = TransactionType.values.firstWhere(
             (t) => t.name == txn.type,
             orElse: () => TransactionType.expense,
           );
+          if (dbType == TransactionType.creditCardPayment) {
+            _type = TransactionType.transfer;
+            _isCreditCardBill = true;
+          } else if (dbType == TransactionType.loanInterest) {
+            _type = TransactionType.transfer;
+            _isLoanInterest = true;
+          } else if (dbType == TransactionType.loanPrincipalRepayment) {
+            _type = TransactionType.transfer;
+            _isLoanInterest = false;
+            _includePrincipalInAnalytics = !txn.isExcludedFromAnalytics;
+          } else {
+            _type = dbType;
+          }
           _amount = txn.amount.toString();
           // If duplicating, keep today's date
           if (_isEditing) {
@@ -163,9 +187,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       return;
     }
 
-    if (_type != TransactionType.transfer &&
-        _type != TransactionType.creditCardPayment &&
-        _selectedCategory == null) {
+    if (_type != TransactionType.transfer && _selectedCategory == null) {
       log.ui('Save failed: missing category');
       ScaffoldMessenger.of(
         context,
@@ -173,9 +195,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       return;
     }
 
-    if ((_type == TransactionType.transfer ||
-            _type == TransactionType.creditCardPayment) &&
-        _selectedToAccount == null) {
+    if (_type == TransactionType.transfer && _selectedToAccount == null) {
       log.ui('Save failed: missing destination account');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please select destination account')),
@@ -204,23 +224,38 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
 
     final dao = ref.read(transactionsDaoProvider);
 
+    TransactionType finalType = _type;
+    bool excludeFromAnalytics = _type.excludedFromAnalytics;
+
+    if (_type == TransactionType.transfer) {
+      if (_selectedToAccount?.type == AccountType.creditCard.name &&
+          _isCreditCardBill) {
+        finalType = TransactionType.creditCardPayment;
+        excludeFromAnalytics = finalType.excludedFromAnalytics;
+      } else if (_selectedToAccount?.type == AccountType.loan.name) {
+        if (_isLoanInterest) {
+          finalType = TransactionType.loanInterest;
+          excludeFromAnalytics = finalType.excludedFromAnalytics;
+        } else {
+          finalType = TransactionType.loanPrincipalRepayment;
+          excludeFromAnalytics = !_includePrincipalInAnalytics;
+        }
+      }
+    }
+
     final companion = TransactionsCompanion(
-      type: Value(_type.name),
+      type: Value(finalType.name),
       accountId: Value(_selectedAccount!.id),
-      toAccountId:
-          (_type == TransactionType.transfer ||
-              _type == TransactionType.creditCardPayment)
+      toAccountId: (_type == TransactionType.transfer)
           ? Value(_selectedToAccount?.id)
           : const Value(null),
-      categoryId:
-          (_type != TransactionType.transfer &&
-              _type != TransactionType.creditCardPayment)
+      categoryId: (_type != TransactionType.transfer)
           ? Value(_selectedCategory?.id)
           : const Value(null),
       amount: Value(amount),
       date: Value(_date),
       note: Value(notes),
-      isExcludedFromAnalytics: Value(_type.excludedFromAnalytics),
+      isExcludedFromAnalytics: Value(excludeFromAnalytics),
       isSplit: Value(_isSplit),
       splitPeople: Value(_isSplit ? _splitPeople : null),
       userShareAmount: Value(_isSplit ? userShare : null),
@@ -236,14 +271,14 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     }
 
     // Mark credit card bill as paid
-    if (_type == TransactionType.creditCardPayment &&
+    if (finalType == TransactionType.creditCardPayment &&
         _selectedToAccount != null) {
       try {
         final accountsDao = ref.read(accountsDaoProvider);
         await accountsDao.markBillAsPaid(
           _selectedToAccount!.id,
-          _date.month,
-          _date.year,
+          _billingMonth.month,
+          _billingMonth.year,
         );
         log.ui(
           'Marked credit card bill as paid for ${_date.month}/${_date.year}',
@@ -307,8 +342,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    final isKeyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
+    final isSideBySide = ref.watch(sideBySideTransactionUINotifierProvider);
 
     return Scaffold(
       resizeToAvoidBottomInset: false,
@@ -350,23 +384,26 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Transaction type selector
-                  SegmentedControl<TransactionType>(
-                    segments: TransactionType.values,
-                    selected: _type,
-                    labelBuilder: (t) => t.displayName,
-                    colorBuilder: (t) => switch (t) {
-                      TransactionType.income => AppColors.income,
-                      TransactionType.expense => AppColors.expense,
-                      TransactionType.transfer => AppColors.transfer,
-                      TransactionType.creditCardPayment => AppColors.transfer,
-                      TransactionType.loanPrincipalRepayment =>
-                        AppColors.transfer,
-                      TransactionType.loanInterest => AppColors.expense,
-                    },
-                    onChanged: (t) => setState(() {
-                      _type = t;
-                      _selectedCategory = null;
-                    }),
+                  Center(
+                    child: SegmentedControl<TransactionType>(
+                      segments: const [
+                        TransactionType.income,
+                        TransactionType.expense,
+                        TransactionType.transfer,
+                      ],
+                      selected: _type,
+                      labelBuilder: (t) => t.displayName.toUpperCase(),
+                      colorBuilder: (t) => switch (t) {
+                        TransactionType.income => AppColors.income,
+                        TransactionType.expense => AppColors.expense,
+                        TransactionType.transfer => AppColors.transfer,
+                        _ => AppColors.transfer,
+                      },
+                      onChanged: (t) => setState(() {
+                        _type = t;
+                        _selectedCategory = null;
+                      }),
+                    ),
                   ),
                   const SizedBox(height: 20),
 
@@ -408,38 +445,219 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Account selector tile
-                  _PickerTile(
-                    label: 'Account',
-                    icon: _selectedAccount?.icon ?? '💳',
-                    value: _selectedAccount?.name ?? 'Select account',
-                    onTap: () => _openAccountPicker(),
-                  ),
-
-                  // To Account (transfers & payments)
-                  if (_type == TransactionType.transfer ||
-                      _type == TransactionType.creditCardPayment) ...[
-                    const SizedBox(height: 8),
-                    _PickerTile(
-                      label: _type == TransactionType.creditCardPayment
-                          ? 'To Credit Card'
-                          : 'To Account',
-                      icon: _selectedToAccount?.icon ?? '💳',
-                      value: _selectedToAccount?.name ?? 'Select destination',
-                      onTap: () => _openAccountPicker(isTo: true),
+                  if (isSideBySide) ...[
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _PickerTile(
+                            label: 'Account',
+                            icon: _selectedAccount?.icon ?? '💳',
+                            value: _selectedAccount?.name ?? 'Select account',
+                            onTap: () => _openAccountPicker(),
+                            isCompact: true,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        if (_type == TransactionType.transfer)
+                          Expanded(
+                            child: _PickerTile(
+                              label: 'To Account',
+                              icon: _selectedToAccount?.icon ?? '💳',
+                              value:
+                                  _selectedToAccount?.name ??
+                                  'Select destination',
+                              onTap: () => _openAccountPicker(isTo: true),
+                              isCompact: true,
+                            ),
+                          )
+                        else
+                          Expanded(
+                            child: _PickerTile(
+                              label: 'Category',
+                              icon: _selectedCategory?.icon ?? '📌',
+                              value:
+                                  _selectedCategory?.name ?? 'Select category',
+                              onTap: _openCategoryPicker,
+                              isCompact: true,
+                            ),
+                          ),
+                      ],
                     ),
+                  ] else ...[
+                    // Account selector tile
+                    _PickerTile(
+                      label: 'Account',
+                      icon: _selectedAccount?.icon ?? '💳',
+                      value: _selectedAccount?.name ?? 'Select account',
+                      onTap: () => _openAccountPicker(),
+                    ),
+
+                    if (_type == TransactionType.transfer) ...[
+                      const SizedBox(height: 8),
+                      _PickerTile(
+                        label: 'To Account',
+                        icon: _selectedToAccount?.icon ?? '💳',
+                        value: _selectedToAccount?.name ?? 'Select destination',
+                        onTap: () => _openAccountPicker(isTo: true),
+                      ),
+                    ],
+
+                    if (_type != TransactionType.transfer) ...[
+                      const SizedBox(height: 8),
+                      _PickerTile(
+                        label: 'Category',
+                        icon: _selectedCategory?.icon ?? '📌',
+                        value: _selectedCategory?.name ?? 'Select category',
+                        onTap: _openCategoryPicker,
+                      ),
+                    ],
                   ],
 
-                  // Category selector (not for transfers & payments)
-                  if (_type != TransactionType.transfer &&
-                      _type != TransactionType.creditCardPayment) ...[
-                    const SizedBox(height: 8),
-                    _PickerTile(
-                      label: 'Category',
-                      icon: _selectedCategory?.icon ?? '📌',
-                      value: _selectedCategory?.name ?? 'Select category',
-                      onTap: _openCategoryPicker,
-                    ),
+                  // Dynamic toggles for transfers
+                  if (_type == TransactionType.transfer) ...[
+                    if (_selectedToAccount?.type ==
+                        AccountType.creditCard.name) ...[
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? AppColors.darkCard
+                              : AppColors.lightCard,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: CheckboxListTile(
+                                title: Text(
+                                  'Credit card bill payment?',
+                                  style: AppTypography.bodyMedium,
+                                ),
+                                value: _isCreditCardBill,
+                                onChanged: (v) => setState(
+                                  () => _isCreditCardBill = v ?? false,
+                                ),
+                                contentPadding: EdgeInsets.zero,
+                                controlAffinity:
+                                    ListTileControlAffinity.leading,
+                                activeColor: AppColors.accentViolet,
+                              ),
+                            ),
+                            if (_isCreditCardBill)
+                              GestureDetector(
+                                onTap: () async {
+                                  final date = await _showMonthYearPicker(
+                                    context,
+                                    _billingMonth,
+                                  );
+                                  if (date != null) {
+                                    setState(() => _billingMonth = date);
+                                  }
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 8,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.accentViolet.withValues(
+                                      alpha: 0.1,
+                                    ),
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(
+                                      color: AppColors.accentViolet.withValues(
+                                        alpha: 0.3,
+                                      ),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(
+                                        Icons.calendar_month,
+                                        size: 16,
+                                        color: AppColors.accentViolet,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        DateFormat(
+                                          'MMM yyyy',
+                                        ).format(_billingMonth),
+                                        style: AppTypography.labelMedium
+                                            .copyWith(
+                                              color: AppColors.accentViolet,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    if (_selectedToAccount?.type == AccountType.loan.name) ...[
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? AppColors.darkCard
+                              : AppColors.lightCard,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Payment Type',
+                              style: AppTypography.labelMedium,
+                            ),
+                            const SizedBox(height: 8),
+                            Center(
+                              child: SegmentedControl<bool>(
+                                segments: const [false, true],
+                                selected: _isLoanInterest,
+                                labelBuilder: (isInterest) =>
+                                    isInterest ? 'Interest' : 'Principal',
+                                onChanged: (v) =>
+                                    setState(() => _isLoanInterest = v),
+                              ),
+                            ),
+                            if (!_isLoanInterest) ...[
+                              const SizedBox(height: 8),
+                              CheckboxListTile(
+                                title: Text(
+                                  'Include as Expense (Analytics)',
+                                  style: AppTypography.bodyMedium,
+                                ),
+                                subtitle: Text(
+                                  'Check if paying someone else\'s loan',
+                                  style: AppTypography.bodySmall,
+                                ),
+                                value: _includePrincipalInAnalytics,
+                                onChanged: (v) => setState(
+                                  () =>
+                                      _includePrincipalInAnalytics = v ?? false,
+                                ),
+                                contentPadding: EdgeInsets.zero,
+                                controlAffinity:
+                                    ListTileControlAffinity.leading,
+                                activeColor: AppColors.accentViolet,
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
                   ],
                   const SizedBox(height: 16),
 
@@ -522,24 +740,23 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
               child: Column(
                 children: [
                   // Numeric keypad
-                  if (!isKeyboardOpen)
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-                      child: NumericKeypad(
-                        value: _isEditingCustomShare
-                            ? _customShareController.text
-                            : _amount,
-                        onValueChanged: (v) {
-                          setState(() {
-                            if (_isEditingCustomShare) {
-                              _customShareController.text = v;
-                            } else {
-                              _amount = v;
-                            }
-                          });
-                        },
-                      ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                    child: NumericKeypad(
+                      value: _isEditingCustomShare
+                          ? _customShareController.text
+                          : _amount,
+                      onValueChanged: (v) {
+                        setState(() {
+                          if (_isEditingCustomShare) {
+                            _customShareController.text = v;
+                          } else {
+                            _amount = v;
+                          }
+                        });
+                      },
                     ),
+                  ),
                   // Date/Time row
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
@@ -643,47 +860,87 @@ class _PickerTile extends StatelessWidget {
   final String icon;
   final String value;
   final VoidCallback onTap;
+  final bool isCompact;
 
   const _PickerTile({
     required this.label,
     required this.icon,
     required this.value,
     required this.onTap,
+    this.isCompact = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Material(
-      color: isDark ? AppColors.darkCard : AppColors.lightCard,
-      borderRadius: BorderRadius.circular(14),
-      child: InkWell(
-        onTap: onTap,
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkCard : AppColors.lightCard,
         borderRadius: BorderRadius.circular(14),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: Row(
-            children: [
-              Text(icon, style: const TextStyle(fontSize: 20)),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(label, style: AppTypography.labelSmall),
-                    const SizedBox(height: 2),
-                    Text(
-                      value,
-                      style: AppTypography.bodyMedium.copyWith(
-                        fontWeight: FontWeight.w600,
+        border: isCompact
+            ? Border.all(
+                color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+              )
+            : null,
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(14),
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: isCompact ? 12 : 16,
+              vertical: isCompact ? 10 : 14,
+            ),
+            child: Row(
+              children: [
+                icon.startsWith('http')
+                    ? (icon.endsWith('.svg')
+                        ? SvgPicture.network(
+                            icon,
+                            width: isCompact ? 24 : 20,
+                            height: isCompact ? 24 : 20,
+                            colorFilter: ColorFilter.mode(
+                              Theme.of(context).iconTheme.color ?? Colors.black,
+                              BlendMode.srcIn,
+                            ),
+                          )
+                        : ClipRRect(
+                            borderRadius: BorderRadius.circular(4),
+                            child: CachedNetworkImage(
+                              imageUrl: icon,
+                              width: isCompact ? 24 : 20,
+                              height: isCompact ? 24 : 20,
+                              errorWidget: (c, u, e) => Text(
+                                '💳',
+                                style: TextStyle(fontSize: isCompact ? 24 : 20),
+                              ),
+                            ),
+                          ))
+                    : Text(icon, style: TextStyle(fontSize: isCompact ? 24 : 20)),
+                SizedBox(width: isCompact ? 8 : 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(label, style: AppTypography.labelSmall),
+                      const SizedBox(height: 2),
+                      Text(
+                        value,
+                        style: AppTypography.bodyMedium.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              const Icon(Icons.keyboard_arrow_down, size: 20),
-            ],
+                if (!isCompact) const Icon(Icons.keyboard_arrow_down, size: 20),
+              ],
+            ),
           ),
         ),
       ),
@@ -894,4 +1151,58 @@ class _SplitPaymentSection extends StatelessWidget {
       ),
     );
   }
+}
+
+Future<DateTime?> _showMonthYearPicker(
+  BuildContext context,
+  DateTime initialDate,
+) async {
+  DateTime selected = initialDate;
+  return showModalBottomSheet<DateTime>(
+    context: context,
+    backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (BuildContext context) {
+      return SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Cancel'),
+                  ),
+                  Text('Select Month', style: AppTypography.headlineSmall),
+                  FilledButton(
+                    onPressed: () => Navigator.pop(context, selected),
+                    child: const Text('Done'),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            SizedBox(
+              height: 130, // Reduced height to show fewer items (3-4 items)
+              child: Transform.scale(
+                scale: 1.15, // Zoom in slightly
+                child: CupertinoDatePicker(
+                  mode: CupertinoDatePickerMode.monthYear,
+                  initialDateTime: initialDate,
+                  onDateTimeChanged: (DateTime newDate) {
+                    selected = newDate;
+                  },
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    },
+  );
 }

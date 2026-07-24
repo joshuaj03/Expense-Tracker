@@ -23,12 +23,12 @@ enum AccountType {
 
   String get icon => switch (this) {
     cash => '💵',
-    bank => 'ðŸ¦',
+    bank => '🏦',
     upi => '📱',
     wallet => '👛',
     creditCard => '💳',
     investment => '📈',
-    loan => 'ðŸ¦',
+    loan => '📉',
   };
 }
 

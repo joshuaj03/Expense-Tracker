@@ -1,4 +1,8 @@
 import 'package:drift/drift.dart' hide Column;
+import 'dart:async';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -25,6 +29,11 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
   AccountType _accountType = AccountType.bank;
   int _selectedColor = AppColors.categoryPalette[0].toARGB32();
   bool _isEditing = false;
+  bool _isSearchingLogos = false;
+
+  String? _customIcon;
+  List<Map<String, dynamic>> _logoSuggestions = [];
+  Timer? _debounce;
 
   final _creditLimitController = TextEditingController();
   final _billGenerationDayController = TextEditingController();
@@ -35,9 +44,88 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
   @override
   void initState() {
     super.initState();
+    _nameController.addListener(_onNameChanged);
     if (widget.editAccountId != null) {
       _isEditing = true;
       _loadAccount();
+    }
+  }
+
+  void _onNameChanged() {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce = Timer(const Duration(milliseconds: 500), () {
+      final query = _nameController.text.trim();
+      if (query.length > 2) {
+        _fetchLogoSuggestions(query);
+      } else {
+        setState(() => _logoSuggestions = []);
+      }
+    });
+  }
+
+  Future<void> _fetchLogoSuggestions(String query) async {
+    final lowerQuery = query.toLowerCase();
+    
+    // 1. Generic Emoji matching
+    final List<Map<String, dynamic>> genericMatches = [];
+    final Map<String, String> genericKeywords = {
+      'cash': '💵', 'wallet': '👛', 'bank': '🏦', 'card': '💳', 
+      'credit': '💳', 'debit': '💳', 'savings': '💰', 'investment': '📈',
+      'crypto': '₿', 'bitcoin': '₿', 'upi': '📱', 'pay': '💸'
+    };
+    
+    genericKeywords.forEach((key, emoji) {
+      if (lowerQuery.contains(key)) {
+        if (!genericMatches.any((m) => m['logo'] == emoji)) {
+          genericMatches.add({
+            'name': 'Generic ${key[0].toUpperCase()}${key.substring(1)}',
+            'domain': null,
+            'logo': emoji,
+          });
+        }
+      }
+    });
+
+    List<Map<String, dynamic>> onlineMatches = [];
+    try {
+      final res = await http.get(
+        Uri.parse('https://autocomplete.clearbit.com/v1/companies/suggest?query=$query'),
+      );
+      if (res.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(res.body);
+        onlineMatches.addAll(data.cast<Map<String, dynamic>>());
+      }
+
+      // If no results and query has multiple words, try searching longest words
+      if (onlineMatches.isEmpty && query.contains(' ')) {
+        final words = query.split(' ').where((w) => w.length > 3).toList();
+        for (final word in words.take(2)) {
+           final wordRes = await http.get(
+              Uri.parse('https://autocomplete.clearbit.com/v1/companies/suggest?query=$word'),
+           );
+           if (wordRes.statusCode == 200) {
+             final List<dynamic> wordData = jsonDecode(wordRes.body);
+             onlineMatches.addAll(wordData.cast<Map<String, dynamic>>());
+           }
+        }
+        // Deduplicate
+        final seenDomains = <String>{};
+        onlineMatches = onlineMatches.where((m) {
+          final domain = m['domain'] as String?;
+          if (domain == null) return false;
+          if (seenDomains.contains(domain)) return false;
+          seenDomains.add(domain);
+          return true;
+        }).toList();
+      }
+    } catch (e) {
+      debugPrint('Failed to fetch logos: $e');
+    }
+
+    if (mounted) {
+      setState(() {
+        _logoSuggestions = [...genericMatches, ...onlineMatches];
+      });
     }
   }
 
@@ -53,6 +141,7 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
           orElse: () => AccountType.bank,
         );
         _selectedColor = account.color;
+        _customIcon = account.icon;
 
         _creditLimitController.text = account.creditLimit?.toString() ?? '';
         _billGenerationDayController.text =
@@ -82,7 +171,7 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
     final companion = AccountsCompanion(
       name: Value(name),
       type: Value(_accountType.name),
-      icon: Value(_accountType.icon),
+      icon: Value(_customIcon ?? _accountType.icon),
       color: Value(_selectedColor),
       creditLimit: _accountType == AccountType.creditCard
           ? Value(double.tryParse(_creditLimitController.text))
@@ -142,6 +231,7 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _nameController.dispose();
     _balanceController.dispose();
     _creditLimitController.dispose();
@@ -201,16 +291,172 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // Account name
-          TextField(
-            controller: _nameController,
-            decoration: const InputDecoration(
-              labelText: 'Account Name',
-              hintText: 'e.g. HDFC Savings',
-            ),
-            textCapitalization: TextCapitalization.words,
-            autofocus: !_isEditing,
+          // Account icon and name
+          Row(
+            children: [
+              GestureDetector(
+                onTap: () async {
+                  final newIcon = await showDialog<String>(
+                    context: context,
+                    builder: (ctx) {
+                      final c = TextEditingController();
+                      return AlertDialog(
+                        title: const Text('Custom Emoji'),
+                        content: TextField(
+                          controller: c,
+                          maxLength: 2,
+                          decoration: const InputDecoration(
+                            hintText: 'Enter an emoji',
+                          ),
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            child: const Text('Cancel'),
+                          ),
+                          FilledButton(
+                            onPressed: () => Navigator.pop(ctx, c.text.trim()),
+                            child: const Text('OK'),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                  if (newIcon != null && newIcon.isNotEmpty) {
+                    setState(() => _customIcon = newIcon);
+                  }
+                },
+                child: Stack(
+                  children: [
+                    Container(
+                      width: 56,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        color: Color(_selectedColor).withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Center(
+                        child: Builder(
+                          builder: (ctx) {
+                            final iconStr = _customIcon ?? _accountType.icon;
+                            if (iconStr.startsWith('http')) {
+                              return ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: CachedNetworkImage(
+                                  imageUrl: iconStr,
+                                  width: 36,
+                                  height: 36,
+                                  errorWidget: (c, u, e) => Text(
+                                    _accountType.icon,
+                                    style: const TextStyle(fontSize: 28),
+                                  ),
+                                ),
+                              );
+                            }
+                            return Text(
+                              iconStr,
+                              style: const TextStyle(fontSize: 28),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      right: 0,
+                      bottom: 0,
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).cardColor,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.edit,
+                          size: 12,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: TextField(
+                  controller: _nameController,
+                  decoration: const InputDecoration(
+                    labelText: 'Account Name',
+                    hintText: 'e.g. HDFC Savings',
+                  ),
+                  textCapitalization: TextCapitalization.words,
+                  autofocus: !_isEditing,
+                ),
+              ),
+            ],
           ),
+          if (_isSearchingLogos)
+            const Padding(
+              padding: EdgeInsets.only(top: 8.0, left: 72),
+              child: Text('Searching for logos online...', style: TextStyle(fontSize: 12, color: Colors.grey)),
+            ),
+          if (_logoSuggestions.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 48,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: _logoSuggestions.length,
+                itemBuilder: (context, index) {
+                  final comp = _logoSuggestions[index];
+                  final domain = comp['domain'];
+                  final logo = comp['logo'] ?? (domain != null ? 'https://icon.horse/icon/$domain' : null);
+                  final name = comp['name'];
+                  if (logo == null) return const SizedBox.shrink();
+
+                  return GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _customIcon = logo;
+                        _logoSuggestions = [];
+                      });
+                      FocusScope.of(context).unfocus();
+                    },
+                    child: Container(
+                      margin: const EdgeInsets.only(right: 12),
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).cardColor,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Theme.of(context).dividerColor,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (logo.startsWith('http'))
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: CachedNetworkImage(
+                                imageUrl: logo,
+                                width: 32,
+                                height: 32,
+                                errorWidget: (c, u, e) => const Icon(Icons.error, size: 32),
+                              ),
+                            )
+                          else
+                            Text(logo, style: const TextStyle(fontSize: 24)),
+                          const SizedBox(width: 8),
+                          Text(name ?? '', style: AppTypography.labelSmall),
+                          const SizedBox(width: 4),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
           const SizedBox(height: 20),
 
           // Account type
@@ -224,7 +470,10 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
               return ChoiceChip(
                 label: Text(type.displayName),
                 selected: isSelected,
-                onSelected: (_) => setState(() => _accountType = type),
+                onSelected: (_) => setState(() {
+                  _accountType = type;
+                  _customIcon = null; // reset to default
+                }),
                 avatar: Text(type.icon, style: const TextStyle(fontSize: 14)),
                 selectedColor: AppColors.accentViolet.withValues(alpha: 0.2),
               );

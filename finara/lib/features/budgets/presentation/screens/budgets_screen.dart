@@ -1,8 +1,10 @@
-import 'package:drift/drift.dart' hide Column;
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
 
+import 'package:drift/drift.dart' hide Column;
 import '../../../../core/database/app_database.dart';
 import 'package:finara/features/budgets/data/budgets_dao.dart';
 import '../../../../core/design_system/app_colors.dart';
@@ -65,10 +67,31 @@ class _BudgetsScreenState extends ConsumerState<BudgetsScreen> {
                       selected: isSelected,
                       onSelected: (_) =>
                           setDialogState(() => selectedCategoryId = cat.id),
-                      avatar: Text(
-                        cat.icon,
-                        style: const TextStyle(fontSize: 14),
-                      ),
+                      avatar: Builder(builder: (context) {
+                        if (cat.icon.startsWith('http')) {
+                          if (cat.icon.endsWith('.svg')) {
+                            return SvgPicture.network(
+                              cat.icon,
+                              width: 14,
+                              height: 14,
+                              colorFilter: ColorFilter.mode(
+                                Theme.of(context).iconTheme.color ?? Colors.black,
+                                BlendMode.srcIn,
+                              ),
+                            );
+                          }
+                          return CachedNetworkImage(
+                            imageUrl: cat.icon,
+                            width: 14,
+                            height: 14,
+                            errorWidget: (c, u, e) => const Text('📌', style: TextStyle(fontSize: 14)),
+                          );
+                        }
+                        return Text(
+                          cat.icon,
+                          style: const TextStyle(fontSize: 14),
+                        );
+                      }),
                       selectedColor: Color(cat.color).withValues(alpha: 0.2),
                     );
                   }).toList(),

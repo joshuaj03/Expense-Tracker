@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -467,7 +469,31 @@ class _TransactionTile extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Center(
-                    child: Text(icon, style: const TextStyle(fontSize: 20)),
+                    child: Builder(builder: (context) {
+                      if (icon.startsWith('http')) {
+                        if (icon.endsWith('.svg')) {
+                          return SvgPicture.network(
+                            icon,
+                            width: 20,
+                            height: 20,
+                            colorFilter: ColorFilter.mode(
+                              Theme.of(context).iconTheme.color ?? Colors.black,
+                              BlendMode.srcIn,
+                            ),
+                          );
+                        }
+                        return ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: CachedNetworkImage(
+                            imageUrl: icon,
+                            width: 20,
+                            height: 20,
+                            errorWidget: (c, u, e) => const Text('📌', style: TextStyle(fontSize: 20)),
+                          ),
+                        );
+                      }
+                      return Text(icon, style: const TextStyle(fontSize: 20));
+                    }),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -581,10 +607,32 @@ class _BudgetSnapshotSection extends ConsumerWidget {
                         children: [
                           Row(
                             children: [
-                              Text(
-                                bwc.categoryIcon,
-                                style: const TextStyle(fontSize: 18),
-                              ),
+                              Builder(builder: (context) {
+                                final cIcon = bwc.categoryIcon;
+                                if (cIcon.startsWith('http')) {
+                                  if (cIcon.endsWith('.svg')) {
+                                    return SvgPicture.network(
+                                      cIcon,
+                                      width: 18,
+                                      height: 18,
+                                      colorFilter: ColorFilter.mode(
+                                        Theme.of(context).iconTheme.color ?? Colors.black,
+                                        BlendMode.srcIn,
+                                      ),
+                                    );
+                                  }
+                                  return CachedNetworkImage(
+                                    imageUrl: cIcon,
+                                    width: 18,
+                                    height: 18,
+                                    errorWidget: (c, u, e) => const Text('📌', style: TextStyle(fontSize: 18)),
+                                  );
+                                }
+                                return Text(
+                                  cIcon,
+                                  style: const TextStyle(fontSize: 18),
+                                );
+                              }),
                               const SizedBox(width: 8),
                               Text(
                                 bwc.categoryName,

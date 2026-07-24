@@ -1,3 +1,5 @@
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -325,10 +327,29 @@ class _SpendingDonutChart extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        Text(
-                          cat?.icon ?? '📌',
-                          style: const TextStyle(fontSize: 14),
-                        ),
+                        Builder(builder: (context) {
+                          final iconStr = cat?.icon ?? '📌';
+                          if (iconStr.startsWith('http')) {
+                            if (iconStr.endsWith('.svg')) {
+                              return SvgPicture.network(
+                                iconStr,
+                                width: 16,
+                                height: 16,
+                                colorFilter: ColorFilter.mode(
+                                  Theme.of(context).iconTheme.color ?? Colors.black,
+                                  BlendMode.srcIn,
+                                ),
+                              );
+                            }
+                            return CachedNetworkImage(
+                              imageUrl: iconStr,
+                              width: 16,
+                              height: 16,
+                              errorWidget: (c, u, e) => const Text('📌', style: TextStyle(fontSize: 14)),
+                            );
+                          }
+                          return Text(iconStr, style: const TextStyle(fontSize: 14));
+                        }),
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
