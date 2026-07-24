@@ -303,12 +303,10 @@ class _BillHistorySheet extends ConsumerWidget {
                         return ListTile(
                           contentPadding: EdgeInsets.zero,
                           title: Text('$monthStr ${bill.billingYear} Statement', style: AppTypography.bodyLarge.copyWith(fontWeight: FontWeight.w600)),
-                          subtitle: bill.billAmount != null 
-                              ? Padding(
-                                  padding: const EdgeInsets.only(top: 4.0),
-                                  child: Text('Amount: ${CurrencyFormatter.format(bill.billAmount!)}'),
-                                )
-                              : null,
+                          subtitle: Padding(
+                            padding: const EdgeInsets.only(top: 4.0),
+                            child: Text('Amount: ${CurrencyFormatter.format(bill.billAmount ?? 0.0)}'),
+                          ),
                           trailing: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                             decoration: BoxDecoration(
