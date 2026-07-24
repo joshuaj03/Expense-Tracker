@@ -12,6 +12,7 @@ import 'features/settings/data/theme_provider.dart';
 import 'core/providers/providers.dart';
 import 'core/database/mymoney_import_data.dart';
 import 'core/utils/logger.dart';
+import 'features/accounts/services/credit_card_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -58,6 +59,9 @@ class _FinaraAppState extends ConsumerState<FinaraApp> {
 
     // Initialize notifications
     await ref.read(notificationServiceProvider).init();
+
+    // Generate any missing credit card bills
+    await ref.read(creditCardServiceProvider).generateMissingBills();
 
     // Import MyMoney data instead of just default categories
     final db = ref.read(databaseProvider);

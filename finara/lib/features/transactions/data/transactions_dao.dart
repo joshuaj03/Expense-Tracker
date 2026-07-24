@@ -112,6 +112,49 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
     );
   }
 
+  /// Watch transactions for a specific account and date range.
+  Stream<List<TransactionWithDetails>> watchTransactionsForAccountAndDateRange(
+    int accountId,
+    DateTime startDate,
+    DateTime endDate,
+  ) {
+    _log.db(
+      'WATCH transactions for acc=$accountId range $startDate to $endDate',
+    );
+    final toAccount = alias(accounts, 'toAcc');
+    final query = select(transactions).join([
+      innerJoin(accounts, accounts.id.equalsExp(transactions.accountId)),
+      leftOuterJoin(
+        toAccount,
+        toAccount.id.equalsExp(transactions.toAccountId),
+      ),
+      leftOuterJoin(
+        categories,
+        categories.id.equalsExp(transactions.categoryId),
+      ),
+    ]);
+
+    query.where(
+      transactions.date.isBetweenValues(startDate, endDate) &
+          (transactions.accountId.equals(accountId) |
+              transactions.toAccountId.equals(accountId)),
+    );
+    query.orderBy([OrderingTerm.desc(transactions.date)]);
+
+    return query.watch().map(
+      (rows) => rows.map((row) {
+        return TransactionWithDetails(
+          transaction: row.readTable(transactions),
+          accountName: row.readTable(accounts).name,
+          toAccountName: row.readTableOrNull(toAccount)?.name,
+          categoryName: row.readTableOrNull(categories)?.name,
+          categoryIcon: row.readTableOrNull(categories)?.icon,
+          categoryColor: row.readTableOrNull(categories)?.color,
+        );
+      }).toList(),
+    );
+  }
+
   /// Insert a new transaction.
   Future<int> insertTransaction(TransactionsCompanion transaction) async {
     try {
@@ -178,7 +221,7 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
         newBalance += amount;
       } else if (type == 'expense') {
         newBalance -= amount;
-      } else if (type == 'transfer') {
+      } else if (type == 'transfer' || type == 'creditCardPayment') {
         newBalance -= amount;
         // Update destination account
         if (txn.toAccountId.present && txn.toAccountId.value != null) {
@@ -234,7 +277,7 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
         newBalance -= txn.amount;
       } else if (txn.type == 'expense') {
         newBalance += txn.amount;
-      } else if (txn.type == 'transfer') {
+      } else if (txn.type == 'transfer' || txn.type == 'creditCardPayment') {
         newBalance += txn.amount;
         if (txn.toAccountId != null) {
           final toAcc = await (select(
@@ -318,29 +361,32 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
     return watchTotalsForDateRange(startDate, endDate);
   }
 
-  /// Get income and expense totals for a specific date range.
   Stream<({double income, double expense})> watchTotalsForDateRange(
     DateTime startDate,
     DateTime endDate,
   ) {
-    return (select(transactions)..where(
-          (t) =>
-              t.date.isBetweenValues(startDate, endDate) &
-              t.isExcludedFromAnalytics.equals(false),
-        ))
-        .watch()
-        .map((txns) {
-          double income = 0;
-          double expense = 0;
-          for (final t in txns) {
-            if (t.type == 'income') {
-              income += t.amount;
-            } else if (t.type == 'expense') {
-              expense += t.amount;
-            }
-          }
-          return (income: income, expense: expense);
-        });
+    final query = select(transactions).join([
+      innerJoin(accounts, accounts.id.equalsExp(transactions.accountId)),
+    ]);
+    query.where(
+      transactions.date.isBetweenValues(startDate, endDate) &
+          transactions.isExcludedFromAnalytics.equals(false) &
+          accounts.isIgnored.equals(false),
+    );
+
+    return query.watch().map((rows) {
+      double income = 0;
+      double expense = 0;
+      for (final row in rows) {
+        final t = row.readTable(transactions);
+        if (t.type == 'income') {
+          income += t.amount;
+        } else if (t.type == 'expense') {
+          expense += t.amount;
+        }
+      }
+      return (income: income, expense: expense);
+    });
   }
 
   /// Get spending by category for a month (expenses only, analytics-eligible).
@@ -348,22 +394,26 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
     final startDate = DateTime(year, month, 1);
     final endDate = DateTime(year, month + 1, 0, 23, 59, 59);
 
-    return (select(transactions)..where(
-          (t) =>
-              t.date.isBetweenValues(startDate, endDate) &
-              t.type.equals('expense') &
-              t.isExcludedFromAnalytics.equals(false),
-        ))
-        .watch()
-        .map((txns) {
-          final map = <int, double>{};
-          for (final t in txns) {
-            if (t.categoryId != null) {
-              map[t.categoryId!] = (map[t.categoryId!] ?? 0) + t.amount;
-            }
-          }
-          return map;
-        });
+    final query = select(transactions).join([
+      innerJoin(accounts, accounts.id.equalsExp(transactions.accountId)),
+    ]);
+    query.where(
+      transactions.date.isBetweenValues(startDate, endDate) &
+          transactions.type.equals('expense') &
+          transactions.isExcludedFromAnalytics.equals(false) &
+          accounts.isIgnored.equals(false),
+    );
+
+    return query.watch().map((rows) {
+      final map = <int, double>{};
+      for (final row in rows) {
+        final t = row.readTable(transactions);
+        if (t.categoryId != null) {
+          map[t.categoryId!] = (map[t.categoryId!] ?? 0) + t.amount;
+        }
+      }
+      return map;
+    });
   }
 
   /// Get monthly totals for the last N months (for bar chart).
@@ -376,17 +426,20 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
       final date = DateTime(now.year, now.month - i, 1);
       final endDate = DateTime(date.year, date.month + 1, 0, 23, 59, 59);
 
-      final txns =
-          await (select(transactions)..where(
-                (t) =>
-                    t.date.isBetweenValues(date, endDate) &
-                    t.isExcludedFromAnalytics.equals(false),
-              ))
-              .get();
+      final query = select(transactions).join([
+        innerJoin(accounts, accounts.id.equalsExp(transactions.accountId)),
+      ]);
+      query.where(
+        transactions.date.isBetweenValues(date, endDate) &
+            transactions.isExcludedFromAnalytics.equals(false) &
+            accounts.isIgnored.equals(false),
+      );
+      final rows = await query.get();
 
       double income = 0;
       double expense = 0;
-      for (final t in txns) {
+      for (final row in rows) {
+        final t = row.readTable(transactions);
         if (t.type == 'income') income += t.amount;
         if (t.type == 'expense') expense += t.amount;
       }

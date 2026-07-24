@@ -7,7 +7,7 @@ part of 'records_time_view_provider.dart';
 // **************************************************************************
 
 String _$recordsTimeViewNotifierHash() =>
-    r'5e73739225e1f4b763a87c6a8513c00bfd1c9cc1';
+    r'4dabf3ddbcecbdf1ff3d69a70948359755b0ba11';
 
 /// See also [RecordsTimeViewNotifier].
 @ProviderFor(RecordsTimeViewNotifier)

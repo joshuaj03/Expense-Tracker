@@ -12,6 +12,7 @@ import '../../features/transactions/presentation/screens/add_transaction_screen.
 import '../../features/analytics/presentation/screens/analytics_screen.dart';
 import '../../features/settings/presentation/screens/settings_screen.dart';
 import '../../features/accounts/presentation/screens/accounts_screen.dart';
+import '../../features/accounts/presentation/screens/account_detail_screen.dart';
 import '../../features/accounts/presentation/screens/add_account_screen.dart';
 import '../../features/categories/presentation/screens/categories_screen.dart';
 import '../../features/budgets/presentation/screens/budgets_screen.dart';
@@ -120,6 +121,14 @@ final appRouter = GoRouter(
       path: '/add-account',
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) => const AddAccountScreen(),
+    ),
+    GoRoute(
+      path: '/account/:id',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) {
+        final id = int.parse(state.pathParameters['id']!);
+        return AccountDetailScreen(accountId: id);
+      },
     ),
     GoRoute(
       path: '/edit-account/:id',

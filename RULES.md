@@ -30,5 +30,154 @@ This document outlines the strict guidelines that must be followed when contribu
 - **Error Logging**: Always log errors with the exception and stack trace using `log.error()`.
 
 ## 5. APK Build
-- **Naming**: All new apk build should have the same format like Finara_vx.xx_build_xxxx.apk and should be stored in the app folder. The xxxx after build should either alpha , beta or prod based on the stage of development.
-- Never name it prod unless, I approve. Right now the project is in active development, since it is being built from scratch, it cant got to even go to beta, unless all the phases are built.
+- All the apk must be stored in the folder build/app/apks/.
+- **Naming**: The apps name now is Finara, so the apk names should be Finara_vx.x.x.x like that.
+
+## 6. App Versioning & Release Lifecycle
+
+- Follow **Semantic Versioning (SemVer)** using the format:
+  `MAJOR.MINOR.PATCH-PRERELEASE.BUILD+BUILD_NUMBER`
+
+- The Flutter app version must be maintained in `pubspec.yaml`, for example:
+  `version: 0.1.0-alpha.1+1`
+
+- Version stages:
+
+  * **Alpha:** `0.x.x-alpha.N` — Active development. Features, UI, database structure, and architecture may change significantly.
+  * **Beta:** `0.x.x-beta.N` — Major planned features are implemented and the app is ready for broader testing. Development should primarily focus on stabilization, bug fixes, UX improvements, and performance.
+  * **Release Candidate:** `1.0.0-rc.N` — Feature-complete build considered suitable for production unless blocking issues are discovered.
+  * **Production:** `1.0.0` and above — Stable public releases.
+
+- Version number rules:
+
+  * Increment `PATCH` for bug fixes and small corrections.
+  * Increment `MINOR` for new backward-compatible features or meaningful feature milestones.
+  * Increment `MAJOR` for major/breaking changes after the first production release.
+  * Increment the prerelease number (`alpha.N`, `beta.N`, `rc.N`) for successive builds within the same development stage.
+  * The Flutter build number after `+` must **always increase** and must never be reused or reset.
+
+- Do **not** automatically transition the project from Alpha → Beta, Beta → RC, or RC → Production.
+
+- A release-stage transition requires explicit developer approval.
+
+- Do **not** automatically increment `MAJOR` or `MINOR` versions unless the scope of the change clearly requires it or the developer explicitly requests it.
+
+- For normal development changes, fixes, and iterations, increment the appropriate prerelease/build number.
+
+- Current development baseline:
+  `0.1.0-alpha.1+1`
+
+- Whenever preparing a build or release:
+
+  1. Determine whether the change is a fix, feature, milestone, or release-stage transition.
+  2. Update the version in `pubspec.yaml` accordingly.
+  3. Ensure the build number is greater than every previously released build number.
+  4. Preserve version history and never downgrade or reuse a previously published version/build number.
+  5. Include the resulting version number in release notes or build summaries.
+
+## Git & GitHub Workflow
+
+### Branch Strategy
+
+* `main` is the stable/releasable branch and must not be used for normal development.
+* `develop` is the primary active-development branch.
+* Never commit feature development directly to `main`.
+* Create temporary branches from `develop` for isolated work.
+
+Use the following branch naming convention:
+
+* `feature/<name>` — new functionality
+* `fix/<name>` — bug fixes
+* `ui/<name>` — UI/UX changes
+* `refactor/<name>` — internal code restructuring
+* `perf/<name>` — performance improvements
+* `docs/<name>` — documentation changes
+* `chore/<name>` — tooling, dependencies, configuration, or maintenance
+
+Examples:
+
+`feature/credit-card-reminders`
+`fix/csv-import-crash`
+`ui/add-transaction-screen`
+`refactor/sqlite-service`
+
+### Commit Convention
+
+Use Conventional Commit-style messages:
+
+`type(scope): concise description`
+
+Preferred commit types:
+
+* `feat` — new functionality
+* `fix` — bug fix
+* `ui` — UI/UX changes
+* `refactor` — code restructuring without changing intended behavior
+* `perf` — performance improvement
+* `test` — test additions or modifications
+* `docs` — documentation
+* `chore` — dependencies, configuration, build system, or maintenance
+
+Examples:
+
+`feat(transaction): add category selection popup`
+
+`fix(csv): handle invalid imported transaction dates`
+
+`ui(transaction): move date and time below calculator`
+
+`refactor(database): extract SQLite repository`
+
+### Commit Rules
+
+* Each commit should represent one logical change.
+* Keep commits small enough to understand and safely revert.
+* Do not combine unrelated changes into a single commit.
+* Do not use vague messages such as `update`, `changes`, `fix stuff`, or `final`.
+* Do not commit code that is known to be broken unless explicitly creating a work-in-progress checkpoint.
+* Never commit secrets, API keys, credentials, signing keys, `.env` contents, generated build artifacts, or other sensitive files.
+* Verify `.gitignore` before committing newly generated or sensitive files.
+
+### AI Agent Git Safety
+
+* Never push, merge, rebase, force-push, delete branches, create releases, or modify Git tags without explicit developer approval.
+* Never use `git push --force` or destructive Git operations unless explicitly instructed.
+* The agent may inspect Git status, diffs, branches, and history when needed.
+* Before proposing a commit, review the diff and ensure only intended files are included.
+* The agent may recommend an appropriate branch name and commit message based on the work performed.
+* Do not automatically commit after every file modification.
+* A commit should only be created when the current logical unit of work is complete and the developer has requested or approved the commit.
+
+### Merging
+
+Normal development flow:
+
+`develop → temporary branch → develop`
+
+Stable release flow:
+
+`develop → main`
+
+Before merging into `develop`:
+
+* Ensure the feature/fix is complete.
+* Run relevant tests and static analysis.
+* Ensure the application builds successfully where practical.
+* Review the diff for unintended changes.
+
+After a temporary branch has been successfully merged, it may be deleted.
+
+### Releases & Tags
+
+Stable development milestones merged into `main` should be tagged using the app version:
+
+`v0.1.0-alpha.1`
+`v0.8.0-beta.1`
+`v1.0.0-rc.1`
+`v1.0.0`
+
+The Git tag must correspond to the version declared in `pubspec.yaml`.
+
+Do not create, move, or delete release tags without explicit developer approval.
+
+Release-stage transitions (Alpha → Beta → RC → Production) always require explicit developer approval.

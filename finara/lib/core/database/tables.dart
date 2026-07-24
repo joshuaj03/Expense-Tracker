@@ -14,6 +14,7 @@ class Accounts extends Table {
   RealColumn get currentBalance => real().withDefault(const Constant(0.0))();
   TextColumn get currency => text().withDefault(const Constant('INR'))();
   BoolColumn get archived => boolean().withDefault(const Constant(false))();
+  BoolColumn get isIgnored => boolean().withDefault(const Constant(false))();
   IntColumn get sortOrder => integer().withDefault(const Constant(0))();
 
   // Credit Card fields
@@ -92,5 +93,6 @@ class CreditCardBills extends Table {
   IntColumn get billingYear => integer()();
   BoolColumn get isPaid => boolean().withDefault(const Constant(false))();
   RealColumn get paidAmount => real().nullable()();
+  RealColumn get billAmount => real().nullable()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }

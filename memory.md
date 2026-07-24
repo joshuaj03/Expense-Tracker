@@ -6,33 +6,27 @@ Building "Finara"—a personalized, offline-first Expense Tracker & Budgeting ap
 ## ✅ What We've Completed
 - **Core Architecture:** Established the project using Flutter, Riverpod, Drift (SQLite), and GoRouter.
 - **Native `.mbak` Import:** Successfully reversed the MyMoney `.mbak` encryption. Implemented a native Dart decryption and import flow using PBKDF2 with AES-CBC.
-- **Phase A (Core UX & Tracking):**
-  - Navigation restructure.
-  - Transaction entry overhaul (custom numpad, category/account picker bottom sheets).
-  - **Itemized Lists vs. Notes:** Built logic to save multi-item transactions and text notes separately, stored seamlessly in Drift via JSON.
-  - **Records Tab Revamp:** Implemented complex timeframe toggles (Daily, Weekly, Monthly 1/3/6, Yearly) with nested summaries.
-  - Summary and Transaction Detail popups with UI wrapping/overflow protections.
-  - Budget persistence, remaining amounts, and tip displays.
-  - Category and account editing improvements.
+- **Phase A (Core UX & Tracking):** Navigation restructure, transaction entry overhaul, itemized lists vs. notes, Records Tab revamp (daily/weekly/monthly/yearly timeframes), summary and transaction detail popups, budget persistence.
+- **Accounts Module Redesign:** 
+  - Added `isIgnored` to exclude specific accounts from global analytics without losing data.
+  - Revamped `accounts_screen.dart` with time-based summary headers (Income, Expense, Total) and a clean 3-dot action menu.
+  - Created a granular `account_detail_screen.dart` for specific account transaction histories.
+  - Upgraded Drift database schema to v4 to support account exclusions and computed credit card `billAmount`.
 
 ## 📍 Current Exact State
-We just successfully finished building out and debugging the **Transactions & Records Module**. The UI gracefully handles long account names, explicitly separates itemized lines from the raw text notes in the database, and provides analytical summaries per timeframe.
-
-We are now ready to tackle Phase B!
+We have successfully built, tested, and polished the **Accounts Module Redesign**. The UI gracefully handles dynamic summaries and excluded accounts. The latest APK `Finara_v0.1.0-alpha.2_build_2.apk` has been built and delivered for the user's manual sanity check. 
+We are moving iteratively through the remaining features.
 
 ## 🚀 Pending Tasks (Up Next)
-**Phase B: Advanced Financial Tracking**
-1. **B1: Credit Card Management** 
-   - Tracking billing cycles, grace periods, statement generation, and due dates.
-2. **B2: Loan Management**
+1. **B2: Loan Management (Next Immediate Task)**
    - Summarizing total interest paid, remaining principal, and an algorithm estimating payoff time based on historical payments.
-3. **Advanced Analytics**
-   - Deeper category insights / recommendations.
-4. **Data Sync & Backup**
-   - CSV / Google Drive Sync.
+2. **B3: Advanced Analytics**
+   - Deeper category insights and recommendations.
+3. **C1: Data Sync & Backup**
+   - CSV backup/restore matching the MyMoney format and Google Drive Sync.
 
 ## ⚠️ Key Technical Decisions & Constraints
-- **APK Naming Scheme:** User prefers final APKs to be placed in `C:\Coding\Expense Tracker\app` following the format `Finara_vx.xx_build_prod.apk` (or `beta`).
+- **Methodology:** We follow a strict "module/part/feature by feature" rule. First build, fix bugs and incomplete features, test (by providing an APK), fix if needed, then move to the next feature. We do not guess or hallucinate; we ask the user for clarification before proceeding.
+- **APK Naming Scheme:** Final APKs follow a strict naming scheme, currently around `Finara_v0.1.0-alpha.2_build_x.apk`.
 - **Offline First:** All data is stored via Drift SQLite locally.
-- **Logging Strategy:** The user prefers on-device testing. We rely on the in-app **Talker UI** for debugging rather than tethered `adb logcat`.
 - **UI Constraints:** Avoid overflow errors by using `Flexible`/`Expanded` with `maxLines: 2` and `TextOverflow.ellipsis` on long data fields like account names.

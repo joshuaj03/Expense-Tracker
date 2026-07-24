@@ -56,7 +56,13 @@ class TransactionDetailDialog extends ConsumerWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     IconButton(
-                      icon: Icon(Icons.copy, size: 20, color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
+                      icon: Icon(
+                        Icons.copy,
+                        size: 20,
+                        color: isDark
+                            ? AppColors.darkTextSecondary
+                            : AppColors.lightTextSecondary,
+                      ),
                       tooltip: 'Duplicate (Today)',
                       onPressed: () {
                         context.pop();
@@ -67,7 +73,9 @@ class TransactionDetailDialog extends ConsumerWidget {
                       icon: Icon(
                         Icons.edit_outlined,
                         size: 20,
-                        color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                        color: isDark
+                            ? AppColors.darkTextSecondary
+                            : AppColors.lightTextSecondary,
                       ),
                       tooltip: 'Edit',
                       onPressed: () {
@@ -107,10 +115,7 @@ class TransactionDetailDialog extends ConsumerWidget {
             const SizedBox(height: 16),
 
             // Details
-            Text(
-              title,
-              style: AppTypography.headlineMedium,
-            ),
+            Text(title, style: AppTypography.headlineMedium),
             const SizedBox(height: 4),
             Text(
               '${DateFormatter.full(t.date)} at ${DateFormatter.time(t.date)}',
@@ -186,7 +191,8 @@ class TransactionDetailDialog extends ConsumerWidget {
               ),
             ),
 
-            if (t.itemizedListJson != null && t.itemizedListJson!.isNotEmpty) ...[
+            if (t.itemizedListJson != null &&
+                t.itemizedListJson!.isNotEmpty) ...[
               const SizedBox(height: 16),
               Text('Items', style: AppTypography.labelSmall),
               const SizedBox(height: 4),
@@ -194,13 +200,16 @@ class TransactionDetailDialog extends ConsumerWidget {
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03),
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.05)
+                      : Colors.black.withValues(alpha: 0.03),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Builder(
                   builder: (context) {
                     try {
-                      final items = jsonDecode(t.itemizedListJson!) as List<dynamic>;
+                      final items =
+                          jsonDecode(t.itemizedListJson!) as List<dynamic>;
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: items.map((e) {
@@ -214,25 +223,34 @@ class TransactionDetailDialog extends ConsumerWidget {
                               children: [
                                 Expanded(
                                   flex: 3,
-                                  child: Text(item, style: AppTypography.bodyMedium),
+                                  child: Text(
+                                    item,
+                                    style: AppTypography.bodyMedium,
+                                  ),
                                 ),
                                 Expanded(
                                   flex: 1,
-                                  child: Text('${qty == qty.toInt() ? qty.toInt() : qty} x', style: AppTypography.bodySmall, textAlign: TextAlign.right),
-                                ),
-                                Expanded(
-                                  flex: 2,
                                   child: Text(
-                                    CurrencyFormatter.format(price), 
-                                    style: AppTypography.bodySmall, 
+                                    '${qty == qty.toInt() ? qty.toInt() : qty} x',
+                                    style: AppTypography.bodySmall,
                                     textAlign: TextAlign.right,
                                   ),
                                 ),
                                 Expanded(
                                   flex: 2,
                                   child: Text(
-                                    CurrencyFormatter.format(total), 
-                                    style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.w600), 
+                                    CurrencyFormatter.format(price),
+                                    style: AppTypography.bodySmall,
+                                    textAlign: TextAlign.right,
+                                  ),
+                                ),
+                                Expanded(
+                                  flex: 2,
+                                  child: Text(
+                                    CurrencyFormatter.format(total),
+                                    style: AppTypography.bodyMedium.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                    ),
                                     textAlign: TextAlign.right,
                                   ),
                                 ),
@@ -242,9 +260,12 @@ class TransactionDetailDialog extends ConsumerWidget {
                         }).toList(),
                       );
                     } catch (_) {
-                      return Text('Error loading items', style: AppTypography.bodySmall);
+                      return Text(
+                        'Error loading items',
+                        style: AppTypography.bodySmall,
+                      );
                     }
-                  }
+                  },
                 ),
               ),
             ],
@@ -257,13 +278,12 @@ class TransactionDetailDialog extends ConsumerWidget {
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03),
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.05)
+                      : Colors.black.withValues(alpha: 0.03),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Text(
-                  t.note,
-                  style: AppTypography.bodyMedium,
-                ),
+                child: Text(t.note, style: AppTypography.bodyMedium),
               ),
             ],
           ],

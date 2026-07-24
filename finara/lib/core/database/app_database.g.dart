@@ -114,6 +114,21 @@ class $AccountsTable extends Accounts with TableInfo<$AccountsTable, Account> {
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _isIgnoredMeta = const VerificationMeta(
+    'isIgnored',
+  );
+  @override
+  late final GeneratedColumn<bool> isIgnored = GeneratedColumn<bool>(
+    'is_ignored',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_ignored" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _sortOrderMeta = const VerificationMeta(
     'sortOrder',
   );
@@ -202,6 +217,7 @@ class $AccountsTable extends Accounts with TableInfo<$AccountsTable, Account> {
     currentBalance,
     currency,
     archived,
+    isIgnored,
     sortOrder,
     creditLimit,
     billGenerationDay,
@@ -281,6 +297,12 @@ class $AccountsTable extends Accounts with TableInfo<$AccountsTable, Account> {
       context.handle(
         _archivedMeta,
         archived.isAcceptableOrUnknown(data['archived']!, _archivedMeta),
+      );
+    }
+    if (data.containsKey('is_ignored')) {
+      context.handle(
+        _isIgnoredMeta,
+        isIgnored.isAcceptableOrUnknown(data['is_ignored']!, _isIgnoredMeta),
       );
     }
     if (data.containsKey('sort_order')) {
@@ -382,6 +404,10 @@ class $AccountsTable extends Accounts with TableInfo<$AccountsTable, Account> {
         DriftSqlType.bool,
         data['${effectivePrefix}archived'],
       )!,
+      isIgnored: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_ignored'],
+      )!,
       sortOrder: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}sort_order'],
@@ -429,6 +455,7 @@ class Account extends DataClass implements Insertable<Account> {
   final double currentBalance;
   final String currency;
   final bool archived;
+  final bool isIgnored;
   final int sortOrder;
   final double? creditLimit;
   final int? billGenerationDay;
@@ -446,6 +473,7 @@ class Account extends DataClass implements Insertable<Account> {
     required this.currentBalance,
     required this.currency,
     required this.archived,
+    required this.isIgnored,
     required this.sortOrder,
     this.creditLimit,
     this.billGenerationDay,
@@ -466,6 +494,7 @@ class Account extends DataClass implements Insertable<Account> {
     map['current_balance'] = Variable<double>(currentBalance);
     map['currency'] = Variable<String>(currency);
     map['archived'] = Variable<bool>(archived);
+    map['is_ignored'] = Variable<bool>(isIgnored);
     map['sort_order'] = Variable<int>(sortOrder);
     if (!nullToAbsent || creditLimit != null) {
       map['credit_limit'] = Variable<double>(creditLimit);
@@ -497,6 +526,7 @@ class Account extends DataClass implements Insertable<Account> {
       currentBalance: Value(currentBalance),
       currency: Value(currency),
       archived: Value(archived),
+      isIgnored: Value(isIgnored),
       sortOrder: Value(sortOrder),
       creditLimit: creditLimit == null && nullToAbsent
           ? const Value.absent()
@@ -532,6 +562,7 @@ class Account extends DataClass implements Insertable<Account> {
       currentBalance: serializer.fromJson<double>(json['currentBalance']),
       currency: serializer.fromJson<String>(json['currency']),
       archived: serializer.fromJson<bool>(json['archived']),
+      isIgnored: serializer.fromJson<bool>(json['isIgnored']),
       sortOrder: serializer.fromJson<int>(json['sortOrder']),
       creditLimit: serializer.fromJson<double?>(json['creditLimit']),
       billGenerationDay: serializer.fromJson<int?>(json['billGenerationDay']),
@@ -556,6 +587,7 @@ class Account extends DataClass implements Insertable<Account> {
       'currentBalance': serializer.toJson<double>(currentBalance),
       'currency': serializer.toJson<String>(currency),
       'archived': serializer.toJson<bool>(archived),
+      'isIgnored': serializer.toJson<bool>(isIgnored),
       'sortOrder': serializer.toJson<int>(sortOrder),
       'creditLimit': serializer.toJson<double?>(creditLimit),
       'billGenerationDay': serializer.toJson<int?>(billGenerationDay),
@@ -578,6 +610,7 @@ class Account extends DataClass implements Insertable<Account> {
     double? currentBalance,
     String? currency,
     bool? archived,
+    bool? isIgnored,
     int? sortOrder,
     Value<double?> creditLimit = const Value.absent(),
     Value<int?> billGenerationDay = const Value.absent(),
@@ -595,6 +628,7 @@ class Account extends DataClass implements Insertable<Account> {
     currentBalance: currentBalance ?? this.currentBalance,
     currency: currency ?? this.currency,
     archived: archived ?? this.archived,
+    isIgnored: isIgnored ?? this.isIgnored,
     sortOrder: sortOrder ?? this.sortOrder,
     creditLimit: creditLimit.present ? creditLimit.value : this.creditLimit,
     billGenerationDay: billGenerationDay.present
@@ -624,6 +658,7 @@ class Account extends DataClass implements Insertable<Account> {
           : this.currentBalance,
       currency: data.currency.present ? data.currency.value : this.currency,
       archived: data.archived.present ? data.archived.value : this.archived,
+      isIgnored: data.isIgnored.present ? data.isIgnored.value : this.isIgnored,
       sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
       creditLimit: data.creditLimit.present
           ? data.creditLimit.value
@@ -654,6 +689,7 @@ class Account extends DataClass implements Insertable<Account> {
           ..write('currentBalance: $currentBalance, ')
           ..write('currency: $currency, ')
           ..write('archived: $archived, ')
+          ..write('isIgnored: $isIgnored, ')
           ..write('sortOrder: $sortOrder, ')
           ..write('creditLimit: $creditLimit, ')
           ..write('billGenerationDay: $billGenerationDay, ')
@@ -676,6 +712,7 @@ class Account extends DataClass implements Insertable<Account> {
     currentBalance,
     currency,
     archived,
+    isIgnored,
     sortOrder,
     creditLimit,
     billGenerationDay,
@@ -697,6 +734,7 @@ class Account extends DataClass implements Insertable<Account> {
           other.currentBalance == this.currentBalance &&
           other.currency == this.currency &&
           other.archived == this.archived &&
+          other.isIgnored == this.isIgnored &&
           other.sortOrder == this.sortOrder &&
           other.creditLimit == this.creditLimit &&
           other.billGenerationDay == this.billGenerationDay &&
@@ -716,6 +754,7 @@ class AccountsCompanion extends UpdateCompanion<Account> {
   final Value<double> currentBalance;
   final Value<String> currency;
   final Value<bool> archived;
+  final Value<bool> isIgnored;
   final Value<int> sortOrder;
   final Value<double?> creditLimit;
   final Value<int?> billGenerationDay;
@@ -733,6 +772,7 @@ class AccountsCompanion extends UpdateCompanion<Account> {
     this.currentBalance = const Value.absent(),
     this.currency = const Value.absent(),
     this.archived = const Value.absent(),
+    this.isIgnored = const Value.absent(),
     this.sortOrder = const Value.absent(),
     this.creditLimit = const Value.absent(),
     this.billGenerationDay = const Value.absent(),
@@ -751,6 +791,7 @@ class AccountsCompanion extends UpdateCompanion<Account> {
     this.currentBalance = const Value.absent(),
     this.currency = const Value.absent(),
     this.archived = const Value.absent(),
+    this.isIgnored = const Value.absent(),
     this.sortOrder = const Value.absent(),
     this.creditLimit = const Value.absent(),
     this.billGenerationDay = const Value.absent(),
@@ -770,6 +811,7 @@ class AccountsCompanion extends UpdateCompanion<Account> {
     Expression<double>? currentBalance,
     Expression<String>? currency,
     Expression<bool>? archived,
+    Expression<bool>? isIgnored,
     Expression<int>? sortOrder,
     Expression<double>? creditLimit,
     Expression<int>? billGenerationDay,
@@ -788,6 +830,7 @@ class AccountsCompanion extends UpdateCompanion<Account> {
       if (currentBalance != null) 'current_balance': currentBalance,
       if (currency != null) 'currency': currency,
       if (archived != null) 'archived': archived,
+      if (isIgnored != null) 'is_ignored': isIgnored,
       if (sortOrder != null) 'sort_order': sortOrder,
       if (creditLimit != null) 'credit_limit': creditLimit,
       if (billGenerationDay != null) 'bill_generation_day': billGenerationDay,
@@ -809,6 +852,7 @@ class AccountsCompanion extends UpdateCompanion<Account> {
     Value<double>? currentBalance,
     Value<String>? currency,
     Value<bool>? archived,
+    Value<bool>? isIgnored,
     Value<int>? sortOrder,
     Value<double?>? creditLimit,
     Value<int?>? billGenerationDay,
@@ -827,6 +871,7 @@ class AccountsCompanion extends UpdateCompanion<Account> {
       currentBalance: currentBalance ?? this.currentBalance,
       currency: currency ?? this.currency,
       archived: archived ?? this.archived,
+      isIgnored: isIgnored ?? this.isIgnored,
       sortOrder: sortOrder ?? this.sortOrder,
       creditLimit: creditLimit ?? this.creditLimit,
       billGenerationDay: billGenerationDay ?? this.billGenerationDay,
@@ -868,6 +913,9 @@ class AccountsCompanion extends UpdateCompanion<Account> {
     if (archived.present) {
       map['archived'] = Variable<bool>(archived.value);
     }
+    if (isIgnored.present) {
+      map['is_ignored'] = Variable<bool>(isIgnored.value);
+    }
     if (sortOrder.present) {
       map['sort_order'] = Variable<int>(sortOrder.value);
     }
@@ -906,6 +954,7 @@ class AccountsCompanion extends UpdateCompanion<Account> {
           ..write('currentBalance: $currentBalance, ')
           ..write('currency: $currency, ')
           ..write('archived: $archived, ')
+          ..write('isIgnored: $isIgnored, ')
           ..write('sortOrder: $sortOrder, ')
           ..write('creditLimit: $creditLimit, ')
           ..write('billGenerationDay: $billGenerationDay, ')
@@ -3092,6 +3141,17 @@ class $CreditCardBillsTable extends CreditCardBills
     type: DriftSqlType.double,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _billAmountMeta = const VerificationMeta(
+    'billAmount',
+  );
+  @override
+  late final GeneratedColumn<double> billAmount = GeneratedColumn<double>(
+    'bill_amount',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -3112,6 +3172,7 @@ class $CreditCardBillsTable extends CreditCardBills
     billingYear,
     isPaid,
     paidAmount,
+    billAmount,
     createdAt,
   ];
   @override
@@ -3171,6 +3232,12 @@ class $CreditCardBillsTable extends CreditCardBills
         paidAmount.isAcceptableOrUnknown(data['paid_amount']!, _paidAmountMeta),
       );
     }
+    if (data.containsKey('bill_amount')) {
+      context.handle(
+        _billAmountMeta,
+        billAmount.isAcceptableOrUnknown(data['bill_amount']!, _billAmountMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -3210,6 +3277,10 @@ class $CreditCardBillsTable extends CreditCardBills
         DriftSqlType.double,
         data['${effectivePrefix}paid_amount'],
       ),
+      billAmount: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}bill_amount'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -3230,6 +3301,7 @@ class CreditCardBill extends DataClass implements Insertable<CreditCardBill> {
   final int billingYear;
   final bool isPaid;
   final double? paidAmount;
+  final double? billAmount;
   final DateTime createdAt;
   const CreditCardBill({
     required this.id,
@@ -3238,6 +3310,7 @@ class CreditCardBill extends DataClass implements Insertable<CreditCardBill> {
     required this.billingYear,
     required this.isPaid,
     this.paidAmount,
+    this.billAmount,
     required this.createdAt,
   });
   @override
@@ -3250,6 +3323,9 @@ class CreditCardBill extends DataClass implements Insertable<CreditCardBill> {
     map['is_paid'] = Variable<bool>(isPaid);
     if (!nullToAbsent || paidAmount != null) {
       map['paid_amount'] = Variable<double>(paidAmount);
+    }
+    if (!nullToAbsent || billAmount != null) {
+      map['bill_amount'] = Variable<double>(billAmount);
     }
     map['created_at'] = Variable<DateTime>(createdAt);
     return map;
@@ -3265,6 +3341,9 @@ class CreditCardBill extends DataClass implements Insertable<CreditCardBill> {
       paidAmount: paidAmount == null && nullToAbsent
           ? const Value.absent()
           : Value(paidAmount),
+      billAmount: billAmount == null && nullToAbsent
+          ? const Value.absent()
+          : Value(billAmount),
       createdAt: Value(createdAt),
     );
   }
@@ -3281,6 +3360,7 @@ class CreditCardBill extends DataClass implements Insertable<CreditCardBill> {
       billingYear: serializer.fromJson<int>(json['billingYear']),
       isPaid: serializer.fromJson<bool>(json['isPaid']),
       paidAmount: serializer.fromJson<double?>(json['paidAmount']),
+      billAmount: serializer.fromJson<double?>(json['billAmount']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
   }
@@ -3294,6 +3374,7 @@ class CreditCardBill extends DataClass implements Insertable<CreditCardBill> {
       'billingYear': serializer.toJson<int>(billingYear),
       'isPaid': serializer.toJson<bool>(isPaid),
       'paidAmount': serializer.toJson<double?>(paidAmount),
+      'billAmount': serializer.toJson<double?>(billAmount),
       'createdAt': serializer.toJson<DateTime>(createdAt),
     };
   }
@@ -3305,6 +3386,7 @@ class CreditCardBill extends DataClass implements Insertable<CreditCardBill> {
     int? billingYear,
     bool? isPaid,
     Value<double?> paidAmount = const Value.absent(),
+    Value<double?> billAmount = const Value.absent(),
     DateTime? createdAt,
   }) => CreditCardBill(
     id: id ?? this.id,
@@ -3313,6 +3395,7 @@ class CreditCardBill extends DataClass implements Insertable<CreditCardBill> {
     billingYear: billingYear ?? this.billingYear,
     isPaid: isPaid ?? this.isPaid,
     paidAmount: paidAmount.present ? paidAmount.value : this.paidAmount,
+    billAmount: billAmount.present ? billAmount.value : this.billAmount,
     createdAt: createdAt ?? this.createdAt,
   );
   CreditCardBill copyWithCompanion(CreditCardBillsCompanion data) {
@@ -3329,6 +3412,9 @@ class CreditCardBill extends DataClass implements Insertable<CreditCardBill> {
       paidAmount: data.paidAmount.present
           ? data.paidAmount.value
           : this.paidAmount,
+      billAmount: data.billAmount.present
+          ? data.billAmount.value
+          : this.billAmount,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
   }
@@ -3342,6 +3428,7 @@ class CreditCardBill extends DataClass implements Insertable<CreditCardBill> {
           ..write('billingYear: $billingYear, ')
           ..write('isPaid: $isPaid, ')
           ..write('paidAmount: $paidAmount, ')
+          ..write('billAmount: $billAmount, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -3355,6 +3442,7 @@ class CreditCardBill extends DataClass implements Insertable<CreditCardBill> {
     billingYear,
     isPaid,
     paidAmount,
+    billAmount,
     createdAt,
   );
   @override
@@ -3367,6 +3455,7 @@ class CreditCardBill extends DataClass implements Insertable<CreditCardBill> {
           other.billingYear == this.billingYear &&
           other.isPaid == this.isPaid &&
           other.paidAmount == this.paidAmount &&
+          other.billAmount == this.billAmount &&
           other.createdAt == this.createdAt);
 }
 
@@ -3377,6 +3466,7 @@ class CreditCardBillsCompanion extends UpdateCompanion<CreditCardBill> {
   final Value<int> billingYear;
   final Value<bool> isPaid;
   final Value<double?> paidAmount;
+  final Value<double?> billAmount;
   final Value<DateTime> createdAt;
   const CreditCardBillsCompanion({
     this.id = const Value.absent(),
@@ -3385,6 +3475,7 @@ class CreditCardBillsCompanion extends UpdateCompanion<CreditCardBill> {
     this.billingYear = const Value.absent(),
     this.isPaid = const Value.absent(),
     this.paidAmount = const Value.absent(),
+    this.billAmount = const Value.absent(),
     this.createdAt = const Value.absent(),
   });
   CreditCardBillsCompanion.insert({
@@ -3394,6 +3485,7 @@ class CreditCardBillsCompanion extends UpdateCompanion<CreditCardBill> {
     required int billingYear,
     this.isPaid = const Value.absent(),
     this.paidAmount = const Value.absent(),
+    this.billAmount = const Value.absent(),
     this.createdAt = const Value.absent(),
   }) : accountId = Value(accountId),
        billingMonth = Value(billingMonth),
@@ -3405,6 +3497,7 @@ class CreditCardBillsCompanion extends UpdateCompanion<CreditCardBill> {
     Expression<int>? billingYear,
     Expression<bool>? isPaid,
     Expression<double>? paidAmount,
+    Expression<double>? billAmount,
     Expression<DateTime>? createdAt,
   }) {
     return RawValuesInsertable({
@@ -3414,6 +3507,7 @@ class CreditCardBillsCompanion extends UpdateCompanion<CreditCardBill> {
       if (billingYear != null) 'billing_year': billingYear,
       if (isPaid != null) 'is_paid': isPaid,
       if (paidAmount != null) 'paid_amount': paidAmount,
+      if (billAmount != null) 'bill_amount': billAmount,
       if (createdAt != null) 'created_at': createdAt,
     });
   }
@@ -3425,6 +3519,7 @@ class CreditCardBillsCompanion extends UpdateCompanion<CreditCardBill> {
     Value<int>? billingYear,
     Value<bool>? isPaid,
     Value<double?>? paidAmount,
+    Value<double?>? billAmount,
     Value<DateTime>? createdAt,
   }) {
     return CreditCardBillsCompanion(
@@ -3434,6 +3529,7 @@ class CreditCardBillsCompanion extends UpdateCompanion<CreditCardBill> {
       billingYear: billingYear ?? this.billingYear,
       isPaid: isPaid ?? this.isPaid,
       paidAmount: paidAmount ?? this.paidAmount,
+      billAmount: billAmount ?? this.billAmount,
       createdAt: createdAt ?? this.createdAt,
     );
   }
@@ -3459,6 +3555,9 @@ class CreditCardBillsCompanion extends UpdateCompanion<CreditCardBill> {
     if (paidAmount.present) {
       map['paid_amount'] = Variable<double>(paidAmount.value);
     }
+    if (billAmount.present) {
+      map['bill_amount'] = Variable<double>(billAmount.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -3474,6 +3573,7 @@ class CreditCardBillsCompanion extends UpdateCompanion<CreditCardBill> {
           ..write('billingYear: $billingYear, ')
           ..write('isPaid: $isPaid, ')
           ..write('paidAmount: $paidAmount, ')
+          ..write('billAmount: $billAmount, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -3520,6 +3620,7 @@ typedef $$AccountsTableCreateCompanionBuilder =
       Value<double> currentBalance,
       Value<String> currency,
       Value<bool> archived,
+      Value<bool> isIgnored,
       Value<int> sortOrder,
       Value<double?> creditLimit,
       Value<int?> billGenerationDay,
@@ -3539,6 +3640,7 @@ typedef $$AccountsTableUpdateCompanionBuilder =
       Value<double> currentBalance,
       Value<String> currency,
       Value<bool> archived,
+      Value<bool> isIgnored,
       Value<int> sortOrder,
       Value<double?> creditLimit,
       Value<int?> billGenerationDay,
@@ -3627,6 +3729,11 @@ class $$AccountsTableFilterComposer
 
   ColumnFilters<bool> get archived => $composableBuilder(
     column: $table.archived,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isIgnored => $composableBuilder(
+    column: $table.isIgnored,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3745,6 +3852,11 @@ class $$AccountsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get isIgnored => $composableBuilder(
+    column: $table.isIgnored,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get sortOrder => $composableBuilder(
     column: $table.sortOrder,
     builder: (column) => ColumnOrderings(column),
@@ -3820,6 +3932,9 @@ class $$AccountsTableAnnotationComposer
 
   GeneratedColumn<bool> get archived =>
       $composableBuilder(column: $table.archived, builder: (column) => column);
+
+  GeneratedColumn<bool> get isIgnored =>
+      $composableBuilder(column: $table.isIgnored, builder: (column) => column);
 
   GeneratedColumn<int> get sortOrder =>
       $composableBuilder(column: $table.sortOrder, builder: (column) => column);
@@ -3913,6 +4028,7 @@ class $$AccountsTableTableManager
                 Value<double> currentBalance = const Value.absent(),
                 Value<String> currency = const Value.absent(),
                 Value<bool> archived = const Value.absent(),
+                Value<bool> isIgnored = const Value.absent(),
                 Value<int> sortOrder = const Value.absent(),
                 Value<double?> creditLimit = const Value.absent(),
                 Value<int?> billGenerationDay = const Value.absent(),
@@ -3930,6 +4046,7 @@ class $$AccountsTableTableManager
                 currentBalance: currentBalance,
                 currency: currency,
                 archived: archived,
+                isIgnored: isIgnored,
                 sortOrder: sortOrder,
                 creditLimit: creditLimit,
                 billGenerationDay: billGenerationDay,
@@ -3949,6 +4066,7 @@ class $$AccountsTableTableManager
                 Value<double> currentBalance = const Value.absent(),
                 Value<String> currency = const Value.absent(),
                 Value<bool> archived = const Value.absent(),
+                Value<bool> isIgnored = const Value.absent(),
                 Value<int> sortOrder = const Value.absent(),
                 Value<double?> creditLimit = const Value.absent(),
                 Value<int?> billGenerationDay = const Value.absent(),
@@ -3966,6 +4084,7 @@ class $$AccountsTableTableManager
                 currentBalance: currentBalance,
                 currency: currency,
                 archived: archived,
+                isIgnored: isIgnored,
                 sortOrder: sortOrder,
                 creditLimit: creditLimit,
                 billGenerationDay: billGenerationDay,
@@ -5767,6 +5886,7 @@ typedef $$CreditCardBillsTableCreateCompanionBuilder =
       required int billingYear,
       Value<bool> isPaid,
       Value<double?> paidAmount,
+      Value<double?> billAmount,
       Value<DateTime> createdAt,
     });
 typedef $$CreditCardBillsTableUpdateCompanionBuilder =
@@ -5777,6 +5897,7 @@ typedef $$CreditCardBillsTableUpdateCompanionBuilder =
       Value<int> billingYear,
       Value<bool> isPaid,
       Value<double?> paidAmount,
+      Value<double?> billAmount,
       Value<DateTime> createdAt,
     });
 
@@ -5843,6 +5964,11 @@ class $$CreditCardBillsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<double> get billAmount => $composableBuilder(
+    column: $table.billAmount,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnFilters(column),
@@ -5906,6 +6032,11 @@ class $$CreditCardBillsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<double> get billAmount => $composableBuilder(
+    column: $table.billAmount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -5962,6 +6093,11 @@ class $$CreditCardBillsTableAnnotationComposer
 
   GeneratedColumn<double> get paidAmount => $composableBuilder(
     column: $table.paidAmount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get billAmount => $composableBuilder(
+    column: $table.billAmount,
     builder: (column) => column,
   );
 
@@ -6028,6 +6164,7 @@ class $$CreditCardBillsTableTableManager
                 Value<int> billingYear = const Value.absent(),
                 Value<bool> isPaid = const Value.absent(),
                 Value<double?> paidAmount = const Value.absent(),
+                Value<double?> billAmount = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => CreditCardBillsCompanion(
                 id: id,
@@ -6036,6 +6173,7 @@ class $$CreditCardBillsTableTableManager
                 billingYear: billingYear,
                 isPaid: isPaid,
                 paidAmount: paidAmount,
+                billAmount: billAmount,
                 createdAt: createdAt,
               ),
           createCompanionCallback:
@@ -6046,6 +6184,7 @@ class $$CreditCardBillsTableTableManager
                 required int billingYear,
                 Value<bool> isPaid = const Value.absent(),
                 Value<double?> paidAmount = const Value.absent(),
+                Value<double?> billAmount = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => CreditCardBillsCompanion.insert(
                 id: id,
@@ -6054,6 +6193,7 @@ class $$CreditCardBillsTableTableManager
                 billingYear: billingYear,
                 isPaid: isPaid,
                 paidAmount: paidAmount,
+                billAmount: billAmount,
                 createdAt: createdAt,
               ),
           withReferenceMapper: (p0) => p0

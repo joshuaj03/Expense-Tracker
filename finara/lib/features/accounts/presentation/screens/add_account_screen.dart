@@ -346,6 +346,83 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
               );
             }).toList(),
           ),
+
+          if (_isEditing &&
+              _accountType == AccountType.creditCard &&
+              widget.editAccountId != null) ...[
+            const SizedBox(height: 30),
+            Text('Billing History', style: AppTypography.labelLarge),
+            const SizedBox(height: 10),
+            StreamBuilder<List<CreditCardBill>>(
+              stream: ref
+                  .read(accountsDaoProvider)
+                  .watchBillsForAccount(widget.editAccountId!),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                final bills = snapshot.data?.toList() ?? [];
+                if (bills.isEmpty) {
+                  return Text(
+                    'No billing history available.',
+                    style: AppTypography.bodySmall,
+                  );
+                }
+
+                // Sort by year, then month descending
+                bills.sort((a, b) {
+                  final aVal = a.billingYear * 12 + a.billingMonth;
+                  final bVal = b.billingYear * 12 + b.billingMonth;
+                  return bVal.compareTo(aVal);
+                });
+
+                return Column(
+                  children: bills.map((bill) {
+                    final monthStr = [
+                      'Jan',
+                      'Feb',
+                      'Mar',
+                      'Apr',
+                      'May',
+                      'Jun',
+                      'Jul',
+                      'Aug',
+                      'Sep',
+                      'Oct',
+                      'Nov',
+                      'Dec',
+                    ][bill.billingMonth - 1];
+                    return ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text('$monthStr ${bill.billingYear} Statement'),
+                      trailing: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: bill.isPaid
+                              ? AppColors.income.withValues(alpha: 0.1)
+                              : AppColors.expense.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          bill.isPaid ? 'PAID' : 'UNPAID',
+                          style: TextStyle(
+                            color: bill.isPaid
+                                ? AppColors.income
+                                : AppColors.expense,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                );
+              },
+            ),
+          ],
         ],
       ),
     );

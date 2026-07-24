@@ -115,8 +115,9 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                 .where((c) => c.id == txn.categoryId)
                 .firstOrNull;
           }
-          
-          if (txn.itemizedListJson != null && txn.itemizedListJson!.isNotEmpty) {
+
+          if (txn.itemizedListJson != null &&
+              txn.itemizedListJson!.isNotEmpty) {
             try {
               final items = jsonDecode(txn.itemizedListJson!) as List<dynamic>;
               for (final e in items) {
@@ -162,7 +163,9 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       return;
     }
 
-    if (_type != TransactionType.transfer && _selectedCategory == null) {
+    if (_type != TransactionType.transfer &&
+        _type != TransactionType.creditCardPayment &&
+        _selectedCategory == null) {
       log.ui('Save failed: missing category');
       ScaffoldMessenger.of(
         context,
@@ -170,7 +173,9 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       return;
     }
 
-    if (_type == TransactionType.transfer && _selectedToAccount == null) {
+    if ((_type == TransactionType.transfer ||
+            _type == TransactionType.creditCardPayment) &&
+        _selectedToAccount == null) {
       log.ui('Save failed: missing destination account');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please select destination account')),
@@ -180,7 +185,9 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
 
     // Build notes
     String notes = _noteController.text.trim();
-    final validItems = _itemEntries.where((e) => e.item.trim().isNotEmpty).toList();
+    final validItems = _itemEntries
+        .where((e) => e.item.trim().isNotEmpty)
+        .toList();
 
     // Itemized info JSON
     String? itemizedInfo;
@@ -200,10 +207,14 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     final companion = TransactionsCompanion(
       type: Value(_type.name),
       accountId: Value(_selectedAccount!.id),
-      toAccountId: _type == TransactionType.transfer
+      toAccountId:
+          (_type == TransactionType.transfer ||
+              _type == TransactionType.creditCardPayment)
           ? Value(_selectedToAccount?.id)
           : const Value(null),
-      categoryId: _type != TransactionType.transfer
+      categoryId:
+          (_type != TransactionType.transfer &&
+              _type != TransactionType.creditCardPayment)
           ? Value(_selectedCategory?.id)
           : const Value(null),
       amount: Value(amount),
@@ -222,6 +233,24 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     } else {
       await dao.insertTransactionWithBalance(companion);
       log.ui('Saved new transaction');
+    }
+
+    // Mark credit card bill as paid
+    if (_type == TransactionType.creditCardPayment &&
+        _selectedToAccount != null) {
+      try {
+        final accountsDao = ref.read(accountsDaoProvider);
+        await accountsDao.markBillAsPaid(
+          _selectedToAccount!.id,
+          _date.month,
+          _date.year,
+        );
+        log.ui(
+          'Marked credit card bill as paid for ${_date.month}/${_date.year}',
+        );
+      } catch (e) {
+        log.error('Failed to mark bill as paid', e);
+      }
     }
 
     if (mounted) {
@@ -382,24 +411,28 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                   // Account selector tile
                   _PickerTile(
                     label: 'Account',
-                    icon: _selectedAccount?.icon ?? 'ðŸ¦',
+                    icon: _selectedAccount?.icon ?? '💳',
                     value: _selectedAccount?.name ?? 'Select account',
                     onTap: () => _openAccountPicker(),
                   ),
 
-                  // To Account (transfers)
-                  if (_type == TransactionType.transfer) ...[
+                  // To Account (transfers & payments)
+                  if (_type == TransactionType.transfer ||
+                      _type == TransactionType.creditCardPayment) ...[
                     const SizedBox(height: 8),
                     _PickerTile(
-                      label: 'To Account',
-                      icon: _selectedToAccount?.icon ?? 'ðŸ¦',
+                      label: _type == TransactionType.creditCardPayment
+                          ? 'To Credit Card'
+                          : 'To Account',
+                      icon: _selectedToAccount?.icon ?? '💳',
                       value: _selectedToAccount?.name ?? 'Select destination',
                       onTap: () => _openAccountPicker(isTo: true),
                     ),
                   ],
 
-                  // Category selector (not for transfers)
-                  if (_type != TransactionType.transfer) ...[
+                  // Category selector (not for transfers & payments)
+                  if (_type != TransactionType.transfer &&
+                      _type != TransactionType.creditCardPayment) ...[
                     const SizedBox(height: 8),
                     _PickerTile(
                       label: 'Category',

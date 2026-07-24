@@ -93,7 +93,7 @@ class AccountsDao extends DatabaseAccessor<AppDatabase>
     }
   }
 
-  /// Delete an account permanently.
+  /// Delete an account permanently (used internally or for soft delete fallback).
   Future<void> deleteAccount(int accountId) async {
     try {
       await (delete(accounts)..where((a) => a.id.equals(accountId))).go();
@@ -104,10 +104,53 @@ class AccountsDao extends DatabaseAccessor<AppDatabase>
     }
   }
 
-  /// Get total balance across all active accounts.
+  /// Hard delete an account: Deletes all associated transactions first, then the account.
+  Future<void> hardDeleteAccount(int accountId) async {
+    return transaction(() async {
+      try {
+        _log.db('HARD DELETE account id=$accountId initialized');
+        // Delete all transactions where this account is either the source or destination
+        await (delete(transactions)..where(
+              (t) =>
+                  t.accountId.equals(accountId) |
+                  t.toAccountId.equals(accountId),
+            ))
+            .go();
+
+        // Delete all credit card bills associated
+        await (delete(
+          creditCardBills,
+        )..where((b) => b.accountId.equals(accountId))).go();
+
+        // Delete the account
+        await (delete(accounts)..where((a) => a.id.equals(accountId))).go();
+        _log.db('HARD DELETE account id=$accountId completed successfully');
+      } catch (e, st) {
+        _log.error('HARD DELETE account id=$accountId FAILED', e, st);
+        rethrow;
+      }
+    });
+  }
+
+  /// Toggle ignore status of an account.
+  Future<void> toggleIgnoreAccount(int accountId, bool isIgnored) async {
+    try {
+      await (update(accounts)..where((a) => a.id.equals(accountId))).write(
+        AccountsCompanion(isIgnored: Value(isIgnored)),
+      );
+      _log.db('TOGGLE IGNORE account id=$accountId -> isIgnored=$isIgnored');
+    } catch (e, st) {
+      _log.error('TOGGLE IGNORE account id=$accountId FAILED', e, st);
+      rethrow;
+    }
+  }
+
+  /// Get total balance across all active, non-ignored accounts.
   Stream<double> watchTotalBalance() {
     final query = selectOnly(accounts)
-      ..where(accounts.archived.equals(false))
+      ..where(
+        accounts.archived.equals(false) & accounts.isIgnored.equals(false),
+      )
       ..addColumns([accounts.currentBalance.sum()]);
     return query.watchSingle().map(
       (row) => row.read(accounts.currentBalance.sum()) ?? 0.0,
@@ -143,6 +186,70 @@ class AccountsDao extends DatabaseAccessor<AppDatabase>
       _log.db('MARK BILL PAID account=$accountId month=$month/$year');
     } catch (e, st) {
       _log.error('MARK BILL PAID FAILED account=$accountId', e, st);
+      rethrow;
+    }
+  }
+
+  /// Generates a bill for a given month/year if it doesn't exist
+  Future<void> generateBillIfNotExists(
+    int accountId,
+    int month,
+    int year,
+  ) async {
+    try {
+      final existing =
+          await (select(creditCardBills)..where(
+                (b) =>
+                    b.accountId.equals(accountId) &
+                    b.billingMonth.equals(month) &
+                    b.billingYear.equals(year),
+              ))
+              .getSingleOrNull();
+
+      if (existing == null) {
+        // Calculate bill amount
+        final account = await getAccountById(accountId);
+        double billAmount = 0.0;
+
+        if (account != null && account.billGenerationDay != null) {
+          final billDay = account.billGenerationDay!;
+          // Start date: previous month's bill generation day (exclusive)
+          final prevMonth = month == 1 ? 12 : month - 1;
+          final prevYear = month == 1 ? year - 1 : year;
+          // E.g., if billDay is 15, then previous month 15th 23:59:59 to current month 15th 23:59:59
+          final startDate = DateTime(prevYear, prevMonth, billDay, 23, 59, 59);
+          final endDate = DateTime(year, month, billDay, 23, 59, 59);
+
+          // Get expenses for this period
+          final expenses =
+              await (select(transactions)..where(
+                    (t) =>
+                        t.accountId.equals(accountId) &
+                        t.type.equals('expense') &
+                        t.date.isBetweenValues(startDate, endDate),
+                  ))
+                  .get();
+
+          for (final t in expenses) {
+            billAmount += t.amount;
+          }
+        }
+
+        await into(creditCardBills).insert(
+          CreditCardBillsCompanion(
+            accountId: Value(accountId),
+            billingMonth: Value(month),
+            billingYear: Value(year),
+            isPaid: const Value(false),
+            billAmount: Value(billAmount),
+          ),
+        );
+        _log.db(
+          'GENERATED UNPAID BILL account=$accountId month=$month/$year amount=$billAmount',
+        );
+      }
+    } catch (e, st) {
+      _log.error('GENERATE BILL FAILED account=$accountId', e, st);
       rethrow;
     }
   }
