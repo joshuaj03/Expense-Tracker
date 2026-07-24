@@ -1,68 +1,204 @@
-import 'package:flutter/foundation.dart';
+/// Comprehensive logging system for Finara.
+///
+/// Uses Talker for in-app log viewing. Every operation — database mutations,
+/// navigation events, UI interactions, backup/restore, and lifecycle events —
+/// must be logged through this system so the user can monitor and debug
+/// the app from the in-app Logs screen.
+library;
+
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:talker_flutter/talker_flutter.dart';
 
-enum LogLevel { info, warning, error }
+// ──────────────────────────────────────────────
+// Custom TalkerLog subclasses for structured log types
+// ──────────────────────────────────────────────
 
-class LogEntry {
-  final DateTime timestamp;
-  final LogLevel level;
-  final String message;
-  final Object? error;
-  final StackTrace? stackTrace;
+/// Database operation log (INSERT, UPDATE, DELETE, QUERY).
+class DbLog extends TalkerLog {
+  DbLog(String message) : super(message);
 
-  LogEntry({
-    required this.level,
-    required this.message,
-    this.error,
-    this.stackTrace,
-  }) : timestamp = DateTime.now();
+  @override
+  String get title => 'DB';
+
+  @override
+  AnsiPen get pen => AnsiPen()..cyan();
 }
 
-final loggerProvider = ChangeNotifierProvider<AppLogger>((ref) {
-  return AppLogger();
+/// Navigation event log (screen transitions, tab switches).
+class NavLog extends TalkerLog {
+  NavLog(String message) : super(message);
+
+  @override
+  String get title => 'NAV';
+
+  @override
+  AnsiPen get pen => AnsiPen()..magenta();
+}
+
+/// User interaction log (taps, toggles, picker selections).
+class UiLog extends TalkerLog {
+  UiLog(String message) : super(message);
+
+  @override
+  String get title => 'UI';
+
+  @override
+  AnsiPen get pen => AnsiPen()..green();
+}
+
+/// Backup/restore operation log.
+class BackupLog extends TalkerLog {
+  BackupLog(String message) : super(message);
+
+  @override
+  String get title => 'BACKUP';
+
+  @override
+  AnsiPen get pen => AnsiPen()..yellow();
+}
+
+/// App lifecycle event log (start, pause, resume).
+class LifecycleLog extends TalkerLog {
+  LifecycleLog(String message) : super(message);
+
+  @override
+  String get title => 'LIFECYCLE';
+
+  @override
+  AnsiPen get pen => AnsiPen()..blue();
+}
+
+// ──────────────────────────────────────────────
+// Global Talker instance
+// ──────────────────────────────────────────────
+
+final talker = TalkerFlutter.init(
+  settings: TalkerSettings(maxHistoryItems: 5000),
+);
+
+final loggerProvider = Provider<Talker>((ref) {
+  return talker;
 });
 
-class AppLogger extends ChangeNotifier {
-  final List<LogEntry> _logs = [];
+// ──────────────────────────────────────────────
+// Convenience API — use AppLogger everywhere
+// ──────────────────────────────────────────────
 
-  List<LogEntry> get logs => List.unmodifiable(_logs);
+/// Centralized logger with typed convenience methods.
+///
+/// Usage:
+/// ```dart
+/// final log = AppLogger.instance;
+/// log.db('INSERT transaction id=5 amount=₹500 category=Food account=UPI-BOB');
+/// log.nav('Navigated to /add-transaction');
+/// log.ui('Category picker opened, type=expense');
+/// log.backup('CSV export started');
+/// log.lifecycle('App resumed');
+/// log.error('Transaction insert failed', exception, stackTrace);
+/// ```
+class AppLogger {
+  AppLogger._();
 
-  void info(String message) {
-    _addLog(LogEntry(level: LogLevel.info, message: message));
-    debugPrint('[INFO] $message');
+  static final AppLogger instance = AppLogger._();
+
+  /// Log a database operation.
+  void db(String message) => talker.logCustom(DbLog(message));
+
+  /// Log a navigation event.
+  void nav(String message) => talker.logCustom(NavLog(message));
+
+  /// Log a user interaction.
+  void ui(String message) => talker.logCustom(UiLog(message));
+
+  /// Log a backup/restore operation.
+  void backup(String message) => talker.logCustom(BackupLog(message));
+
+  /// Log an app lifecycle event.
+  void lifecycle(String message) => talker.logCustom(LifecycleLog(message));
+
+  /// Log an informational message.
+  void info(String message) => talker.info(message);
+
+  /// Log a warning.
+  void warning(String message) => talker.warning(message);
+
+  /// Log an error with optional exception and stack trace.
+  void error(String message, [Object? exception, StackTrace? stackTrace]) =>
+      talker.error(message, exception, stackTrace);
+}
+
+// ──────────────────────────────────────────────
+// Riverpod observer — logs all provider lifecycle events
+// ──────────────────────────────────────────────
+
+class RiverpodTalkerObserver extends ProviderObserver {
+  RiverpodTalkerObserver();
+
+  @override
+  void didAddProvider(
+    ProviderBase<Object?> provider,
+    Object? value,
+    ProviderContainer container,
+  ) {}
+
+  @override
+  void didUpdateProvider(
+    ProviderBase<Object?> provider,
+    Object? previousValue,
+    Object? newValue,
+    ProviderContainer container,
+  ) {
+    talker.verbose(
+      'Provider [${provider.name ?? provider.runtimeType}] updated: $newValue',
+    );
   }
 
-  void warning(String message, [Object? error, StackTrace? stackTrace]) {
-    _addLog(LogEntry(
-        level: LogLevel.warning,
-        message: message,
-        error: error,
-        stackTrace: stackTrace));
-    debugPrint('[WARN] $message');
-    if (error != null) debugPrint(error.toString());
+  @override
+  void didDisposeProvider(
+    ProviderBase<Object?> provider,
+    ProviderContainer container,
+  ) {}
+
+  @override
+  void providerDidFail(
+    ProviderBase<Object?> provider,
+    Object error,
+    StackTrace stackTrace,
+    ProviderContainer container,
+  ) {
+    talker.error(
+      'Provider [${provider.name ?? provider.runtimeType}] failed',
+      error,
+      stackTrace,
+    );
+  }
+}
+
+// ──────────────────────────────────────────────
+// GoRouter navigation observer
+// ──────────────────────────────────────────────
+
+class AppNavigatorObserver extends NavigatorObserver {
+  final _log = AppLogger.instance;
+
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    _log.nav('PUSH → ${route.settings.name ?? route.settings.toString()}');
   }
 
-  void error(String message, [Object? error, StackTrace? stackTrace]) {
-    _addLog(LogEntry(
-        level: LogLevel.error,
-        message: message,
-        error: error,
-        stackTrace: stackTrace));
-    debugPrint('[ERROR] $message');
-    if (error != null) debugPrint(error.toString());
-    if (stackTrace != null) debugPrint(stackTrace.toString());
+  @override
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    _log.nav('POP ← ${route.settings.name ?? route.settings.toString()}');
   }
 
-  void clear() {
-    _logs.clear();
-    notifyListeners();
+  @override
+  void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) {
+    _log.nav('REPLACE ${oldRoute?.settings.name} → ${newRoute?.settings.name}');
   }
 
-  void _addLog(LogEntry entry) {
-    _logs.insert(0, entry); // Insert at beginning for newest first
-    if (_logs.length > 1000) {
-      _logs.removeLast(); // Keep max 1000 logs
-    }
-    notifyListeners();
+  @override
+  void didRemove(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    _log.nav('REMOVE ${route.settings.name ?? route.settings.toString()}');
   }
 }

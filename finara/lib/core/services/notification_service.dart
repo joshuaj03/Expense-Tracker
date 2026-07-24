@@ -4,9 +4,14 @@ import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:shared_preferences/shared_preferences.dart';
 
-final notificationServiceProvider = Provider<NotificationService>((ref) {
+import 'package:riverpod_annotation/riverpod_annotation.dart';
+
+part 'notification_service.g.dart';
+
+@Riverpod(keepAlive: true)
+NotificationService notificationService(NotificationServiceRef ref) {
   return NotificationService();
-});
+}
 
 class NotificationService {
   final FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin =
@@ -35,11 +40,13 @@ class NotificationService {
     // Request permissions
     _flutterLocalNotificationsPlugin
         .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>()
+          AndroidFlutterLocalNotificationsPlugin
+        >()
         ?.requestNotificationsPermission();
     _flutterLocalNotificationsPlugin
         .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>()
+          AndroidFlutterLocalNotificationsPlugin
+        >()
         ?.requestExactAlarmsPermission();
 
     _isInitialized = true;
@@ -54,27 +61,52 @@ class NotificationService {
   }) async {
     // Generate unique base ID for this account's notifications
     final baseId = accountId * 1000;
-    
+
     // First, cancel existing reminders for this account
     await cancelAccountReminders(accountId);
 
     // Determine the current or next bill generation date
-    DateTime nextGenDate = DateTime(currentDate.year, currentDate.month, billGenerationDay, 9, 0); // 9 AM
+    DateTime nextGenDate = DateTime(
+      currentDate.year,
+      currentDate.month,
+      billGenerationDay,
+      9,
+      0,
+    ); // 9 AM
     if (currentDate.isAfter(nextGenDate)) {
       // If we passed this month's gen date, schedule for next month
-      nextGenDate = DateTime(currentDate.year, currentDate.month + 1, billGenerationDay, 9, 0);
+      nextGenDate = DateTime(
+        currentDate.year,
+        currentDate.month + 1,
+        billGenerationDay,
+        9,
+        0,
+      );
     }
-    
-    DateTime nextDueDate = DateTime(nextGenDate.year, nextGenDate.month, dueDay, 9, 0);
+
+    DateTime nextDueDate = DateTime(
+      nextGenDate.year,
+      nextGenDate.month,
+      dueDay,
+      9,
+      0,
+    );
     // Handle case where due date wraps to next month (e.g., gen: 20th, due: 5th)
     if (dueDay < billGenerationDay) {
-      nextDueDate = DateTime(nextGenDate.year, nextGenDate.month + 1, dueDay, 9, 0);
+      nextDueDate = DateTime(
+        nextGenDate.year,
+        nextGenDate.month + 1,
+        dueDay,
+        9,
+        0,
+      );
     }
 
     const androidDetails = AndroidNotificationDetails(
       'credit_card_reminders',
       'Credit Card Reminders',
-      channelDescription: 'Reminders for credit card bill generation and due dates',
+      channelDescription:
+          'Reminders for credit card bill generation and due dates',
       importance: Importance.max,
       priority: Priority.high,
     );
@@ -90,7 +122,8 @@ class NotificationService {
       await _flutterLocalNotificationsPlugin.zonedSchedule(
         id: baseId + 1,
         title: 'Bill Generation Upcoming',
-        body: 'Your bill for $accountName will be generated in $preGenReminderDays day(s).',
+        body:
+            'Your bill for $accountName will be generated in $preGenReminderDays day(s).',
         scheduledDate: tz.TZDateTime.from(preGenDate, tz.local),
         notificationDetails: details,
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
@@ -102,7 +135,8 @@ class NotificationService {
       await _flutterLocalNotificationsPlugin.zonedSchedule(
         id: baseId + 2,
         title: 'Bill Generated',
-        body: 'Your bill for $accountName has been generated. Please check the amount and pay by the due date (Day $dueDay).',
+        body:
+            'Your bill for $accountName has been generated. Please check the amount and pay by the due date (Day $dueDay).',
         scheduledDate: tz.TZDateTime.from(nextGenDate, tz.local),
         notificationDetails: details,
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
@@ -110,14 +144,17 @@ class NotificationService {
     }
 
     // 3. Repeated reminders every N days between Gen and Due date
-    DateTime reminderDate = nextGenDate.add(Duration(days: reminderIntervalDays));
+    DateTime reminderDate = nextGenDate.add(
+      Duration(days: reminderIntervalDays),
+    );
     int reminderOffset = 3;
     while (reminderDate.isBefore(nextDueDate)) {
       if (reminderDate.isAfter(currentDate)) {
         await _flutterLocalNotificationsPlugin.zonedSchedule(
           id: baseId + reminderOffset,
           title: 'Bill Payment Reminder',
-          body: 'Have you paid your $accountName bill yet? Due date is approaching on Day $dueDay.',
+          body:
+              'Have you paid your $accountName bill yet? Due date is approaching on Day $dueDay.',
           scheduledDate: tz.TZDateTime.from(reminderDate, tz.local),
           notificationDetails: details,
           androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
@@ -126,7 +163,7 @@ class NotificationService {
       reminderDate = reminderDate.add(Duration(days: reminderIntervalDays));
       reminderOffset++;
     }
-    
+
     // 4. Final reminder on due date
     if (nextDueDate.isAfter(currentDate)) {
       await _flutterLocalNotificationsPlugin.zonedSchedule(

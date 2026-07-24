@@ -4,14 +4,16 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/design_system/app_colors.dart';
 import '../../../../core/design_system/app_typography.dart';
-import '../../../../core/providers/providers.dart';
+import 'package:finara/features/settings/data/theme_provider.dart';
+import 'package:finara/features/settings/data/privacy_provider.dart';
+import 'package:finara/features/settings/data/currency_provider.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final themeMode = ref.watch(themeModeProvider);
+    final themeMode = ref.watch(themeModeNotifierProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
@@ -37,62 +39,99 @@ class SettingsScreen extends ConsumerWidget {
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: const Center(
-                    child: Text('F',
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 28)),
+                    child: Text(
+                      'F',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 28,
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 12),
-                Text('Finara',
-                    style: AppTypography.displaySmall
-                        .copyWith(color: Colors.white)),
+                Text(
+                  'Finara',
+                  style: AppTypography.displaySmall.copyWith(
+                    color: Colors.white,
+                  ),
+                ),
                 const SizedBox(height: 4),
-                Text('Personal Finance OS',
-                    style: AppTypography.bodySmall
-                        .copyWith(color: Colors.white70)),
+                Text(
+                  'Personal Finance OS',
+                  style: AppTypography.bodySmall.copyWith(
+                    color: Colors.white70,
+                  ),
+                ),
                 const SizedBox(height: 4),
-                Text('v0.1.0 Alpha',
-                    style: AppTypography.labelSmall
-                        .copyWith(color: Colors.white54)),
+                Text(
+                  'v0.1.0 Alpha',
+                  style: AppTypography.labelSmall.copyWith(
+                    color: Colors.white54,
+                  ),
+                ),
               ],
             ),
           ),
           const SizedBox(height: 24),
 
           // Appearance
-          _SectionTitle('Appearance'),
+          _SectionTitle('Appearance & Config'),
           const SizedBox(height: 8),
           _SettingsCard(
             isDark: isDark,
             children: [
+              Consumer(
+                builder: (context, ref, child) {
+                  final currency = ref.watch(currencyNotifierProvider);
+                  return _SettingsTile(
+                    icon: Icons.attach_money_outlined,
+                    title: 'Currency',
+                    trailing: DropdownButton<String>(
+                      value: currency,
+                      underline: const SizedBox(),
+                      items: const [
+                        DropdownMenuItem(value: '₹', child: Text('INR (₹)')),
+                        DropdownMenuItem(value: '\$', child: Text('USD (\$)')),
+                        DropdownMenuItem(value: '€', child: Text('EUR (€)')),
+                        DropdownMenuItem(value: '£', child: Text('GBP (£)')),
+                      ],
+                      onChanged: (val) {
+                        if (val != null) {
+                          ref
+                              .read(currencyNotifierProvider.notifier)
+                              .setCurrency(val);
+                        }
+                      },
+                    ),
+                  );
+                },
+              ),
+              const Divider(height: 1),
               _SettingsTile(
                 icon: Icons.palette_outlined,
                 title: 'Theme',
-                trailing: SegmentedButton<int>(
-                  segments: const [
-                    ButtonSegment(value: 0, label: Text('Auto')),
-                    ButtonSegment(value: 1, label: Text('Dark')),
-                    ButtonSegment(value: 2, label: Text('Light')),
+                trailing: DropdownButton<int>(
+                  value: themeMode,
+                  underline: const SizedBox(),
+                  items: const [
+                    DropdownMenuItem(value: 0, child: Text('System Auto')),
+                    DropdownMenuItem(value: 1, child: Text('Dark Mode')),
+                    DropdownMenuItem(value: 2, child: Text('Light Mode')),
                   ],
-                  selected: {themeMode},
-                  onSelectionChanged: (value) {
-                    ref
-                        .read(themeModeProvider.notifier)
-                        .setMode(value.first);
+                  onChanged: (val) {
+                    if (val != null) {
+                      ref.read(themeModeNotifierProvider.notifier).setMode(val);
+                    }
                   },
-                  style: ButtonStyle(
-                    visualDensity: VisualDensity.compact,
-                    tapTargetSize:
-                        MaterialTapTargetSize.shrinkWrap,
-                  ),
                 ),
               ),
               const Divider(height: 1),
               Consumer(
                 builder: (context, ref, child) {
-                  final hideOnlyTotal = ref.watch(hideOnlyTotalBalanceProvider);
+                  final hideOnlyTotal = ref.watch(
+                    hideOnlyTotalBalanceNotifierProvider,
+                  );
                   return _SettingsTile(
                     icon: Icons.visibility_off_outlined,
                     title: 'Hide Only Total',
@@ -101,7 +140,7 @@ class SettingsScreen extends ConsumerWidget {
                       value: hideOnlyTotal,
                       onChanged: (val) {
                         ref
-                            .read(hideOnlyTotalBalanceProvider.notifier)
+                            .read(hideOnlyTotalBalanceNotifierProvider.notifier)
                             .setHideOnlyTotal(val);
                       },
                       activeColor: AppColors.accentViolet,
@@ -171,9 +210,10 @@ class _SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Text(title,
-        style: AppTypography.labelLarge
-            .copyWith(color: AppColors.accentViolet));
+    return Text(
+      title,
+      style: AppTypography.labelLarge.copyWith(color: AppColors.accentViolet),
+    );
   }
 }
 
@@ -218,16 +258,12 @@ class _SettingsTile extends StatelessWidget {
       subtitle: subtitle != null
           ? Text(subtitle!, style: AppTypography.bodySmall)
           : null,
-      trailing: trailing ??
-          (onTap != null
-              ? const Icon(Icons.chevron_right, size: 20)
-              : null),
+      trailing:
+          trailing ??
+          (onTap != null ? const Icon(Icons.chevron_right, size: 20) : null),
       onTap: onTap,
-      contentPadding:
-          const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
-      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
     );
   }
 }

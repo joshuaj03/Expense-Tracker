@@ -8,9 +8,14 @@ import '../../../../core/design_system/widgets/glass_card.dart';
 import '../../../../core/design_system/widgets/amount_text.dart';
 import '../../../../core/design_system/widgets/budget_progress_bar.dart';
 import '../../../../core/design_system/widgets/empty_state.dart';
-import '../../../../core/providers/providers.dart';
+import 'package:finara/features/transactions/data/transactions_provider.dart';
+import 'package:finara/features/budgets/data/budgets_provider.dart';
+import 'package:finara/features/accounts/data/accounts_provider.dart';
+import 'package:finara/features/settings/data/privacy_provider.dart';
+import '../../data/dashboard_time_view_provider.dart';
 import '../../../../core/utils/currency_formatter.dart';
-import '../../../../core/database/daos/transactions_dao.dart';
+import '../../../../core/utils/logger.dart';
+import 'package:finara/features/transactions/data/transactions_dao.dart';
 import '../widgets/credit_card_reminders_card.dart';
 
 /// Provider to track whether balances are hidden.
@@ -37,11 +42,14 @@ class DashboardScreen extends ConsumerWidget {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Center(
-                child: Text('F',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 16)),
+                child: Text(
+                  'F',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                  ),
+                ),
               ),
             ),
             const SizedBox(width: 10),
@@ -49,6 +57,53 @@ class DashboardScreen extends ConsumerWidget {
           ],
         ),
         actions: [
+          Consumer(
+            builder: (context, ref, child) {
+              final timeView = ref.watch(dashboardTimeViewNotifierProvider);
+              return PopupMenuButton<DashboardTimeView>(
+                initialValue: timeView,
+                onSelected: (view) {
+                  AppLogger.instance.ui(
+                    'Dashboard time filter changed to ${view.name}',
+                  );
+                  ref
+                      .read(dashboardTimeViewNotifierProvider.notifier)
+                      .setView(view);
+                },
+                itemBuilder: (context) => [
+                  PopupMenuItem(
+                    value: DashboardTimeView.daily,
+                    child: Text('Daily'),
+                  ),
+                  PopupMenuItem(
+                    value: DashboardTimeView.weekly,
+                    child: Text('Weekly'),
+                  ),
+                  PopupMenuItem(
+                    value: DashboardTimeView.monthly,
+                    child: Text('Monthly'),
+                  ),
+                  PopupMenuItem(
+                    value: DashboardTimeView.yearly,
+                    child: Text('Yearly'),
+                  ),
+                ],
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                  child: Row(
+                    children: [
+                      Text(
+                        timeView.name[0].toUpperCase() +
+                            timeView.name.substring(1),
+                        style: AppTypography.bodySmall,
+                      ),
+                      const Icon(Icons.arrow_drop_down),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.search),
             onPressed: () => context.push('/search'),
@@ -68,20 +123,22 @@ class DashboardScreen extends ConsumerWidget {
             _QuickActions(),
             const SizedBox(height: 24),
             _SectionHeader(
-                title: 'Recent Transactions',
-                onSeeAll: () {
-                  final shell = StatefulNavigationShell.of(context);
-                  shell.goBranch(1);
-                }),
+              title: 'Recent Transactions',
+              onSeeAll: () {
+                final shell = StatefulNavigationShell.of(context);
+                shell.goBranch(1);
+              },
+            ),
             const SizedBox(height: 12),
             _RecentTransactionsList(),
             const SizedBox(height: 24),
             _SectionHeader(
-                title: 'Budget Overview',
-                onSeeAll: () {
-                  final shell = StatefulNavigationShell.of(context);
-                  shell.goBranch(3);
-                }),
+              title: 'Budget Overview',
+              onSeeAll: () {
+                final shell = StatefulNavigationShell.of(context);
+                shell.goBranch(3);
+              },
+            ),
             const SizedBox(height: 12),
             _BudgetSnapshotSection(),
           ],
@@ -97,14 +154,15 @@ class _BalanceHeroCard extends ConsumerWidget {
     final accountsDao = ref.watch(accountsDaoProvider);
     final transactionsDao = ref.watch(transactionsDaoProvider);
     final isHidden = ref.watch(balanceHiddenProvider);
-    final hideOnlyTotal = ref.watch(hideOnlyTotalBalanceProvider);
-    final now = DateTime.now();
+    final hideOnlyTotal = ref.watch(hideOnlyTotalBalanceNotifierProvider);
+    final timeView = ref.watch(dashboardTimeViewNotifierProvider);
+    final (start, end) = timeView.getDateRange();
 
     return StreamBuilder<double>(
       stream: accountsDao.watchTotalBalance(),
       builder: (context, balanceSnap) {
         return StreamBuilder(
-          stream: transactionsDao.watchMonthlyTotals(now.year, now.month),
+          stream: transactionsDao.watchTotalsForDateRange(start, end),
           builder: (context, totalsSnap) {
             final totalBalance = balanceSnap.data ?? 0.0;
             final income = totalsSnap.data?.income ?? 0.0;
@@ -133,8 +191,9 @@ class _BalanceHeroCard extends ConsumerWidget {
                       children: [
                         Text(
                           'Total Balance',
-                          style: AppTypography.labelMedium
-                              .copyWith(color: Colors.white70),
+                          style: AppTypography.labelMedium.copyWith(
+                            color: Colors.white70,
+                          ),
                         ),
                         // Eye toggle
                         GestureDetector(
@@ -143,9 +202,7 @@ class _BalanceHeroCard extends ConsumerWidget {
                                 !isHidden;
                           },
                           child: Icon(
-                            isHidden
-                                ? Icons.visibility_off
-                                : Icons.visibility,
+                            isHidden ? Icons.visibility_off : Icons.visibility,
                             color: Colors.white60,
                             size: 20,
                           ),
@@ -155,10 +212,12 @@ class _BalanceHeroCard extends ConsumerWidget {
                     const SizedBox(height: 4),
                     Text(
                       isHidden
-                          ? '₹ ••••••'
+                          ? '\u20B9 \u2022\u2022\u2022\u2022\u2022\u2022'
                           : CurrencyFormatter.format(totalBalance),
-                      style: AppTypography.currencyLarge
-                          .copyWith(color: Colors.white, fontSize: 32),
+                      style: AppTypography.currencyLarge.copyWith(
+                        color: Colors.white,
+                        fontSize: 32,
+                      ),
                     ),
                     const SizedBox(height: 20),
                     Row(
@@ -172,11 +231,7 @@ class _BalanceHeroCard extends ConsumerWidget {
                             isHidden: isHidden && !hideOnlyTotal,
                           ),
                         ),
-                        Container(
-                          width: 1,
-                          height: 36,
-                          color: Colors.white24,
-                        ),
+                        Container(width: 1, height: 36, color: Colors.white24),
                         Expanded(
                           child: _MiniStat(
                             label: 'Expenses',
@@ -224,16 +279,21 @@ class _MiniStat extends StatelessWidget {
           children: [
             Icon(icon, size: 14, color: color),
             const SizedBox(width: 4),
-            Text(label,
-                style:
-                    AppTypography.labelSmall.copyWith(color: Colors.white60)),
+            Text(
+              label,
+              style: AppTypography.labelSmall.copyWith(color: Colors.white60),
+            ),
           ],
         ),
         const SizedBox(height: 4),
         Text(
-          isHidden ? '₹ ••••' : CurrencyFormatter.compact(amount),
-          style: AppTypography.currencySmall
-              .copyWith(color: Colors.white, fontWeight: FontWeight.w700),
+          isHidden
+              ? '\u20B9 \u2022\u2022\u2022\u2022'
+              : CurrencyFormatter.compact(amount),
+          style: AppTypography.currencySmall.copyWith(
+            color: Colors.white,
+            fontWeight: FontWeight.w700,
+          ),
         ),
       ],
     );
@@ -319,9 +379,12 @@ class _SectionHeader extends StatelessWidget {
         if (onSeeAll != null)
           TextButton(
             onPressed: onSeeAll,
-            child: Text('See all',
-                style: AppTypography.labelMedium
-                    .copyWith(color: AppColors.accentViolet)),
+            child: Text(
+              'See all',
+              style: AppTypography.labelMedium.copyWith(
+                color: AppColors.accentViolet,
+              ),
+            ),
           ),
       ],
     );
@@ -366,10 +429,12 @@ class _TransactionTile extends StatelessWidget {
     final isIncome = t.type == 'income';
     final isTransfer = t.type == 'transfer';
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final isHidden =
-        ProviderScope.containerOf(context).read(balanceHiddenProvider);
-    final hideOnlyTotal =
-        ProviderScope.containerOf(context).read(hideOnlyTotalBalanceProvider);
+    final isHidden = ProviderScope.containerOf(
+      context,
+    ).read(balanceHiddenProvider);
+    final hideOnlyTotal = ProviderScope.containerOf(
+      context,
+    ).read(hideOnlyTotalBalanceNotifierProvider);
     final hideAmount = isHidden && !hideOnlyTotal;
 
     final icon = isTransfer ? '🔄' : (txn.categoryIcon ?? '📌');
@@ -389,16 +454,16 @@ class _TransactionTile extends StatelessWidget {
             context.push('/add-transaction?editId=${t.id}');
           },
           child: Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             child: Row(
               children: [
                 Container(
                   width: 42,
                   height: 42,
                   decoration: BoxDecoration(
-                    color: Color(txn.categoryColor ?? 0xFF6C63FF)
-                        .withValues(alpha: 0.15),
+                    color: Color(
+                      txn.categoryColor ?? 0xFF6C63FF,
+                    ).withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Center(
@@ -410,27 +475,32 @@ class _TransactionTile extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(title,
-                          style: AppTypography.bodyMedium
-                              .copyWith(fontWeight: FontWeight.w600)),
+                      Text(
+                        title,
+                        style: AppTypography.bodyMedium.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                       const SizedBox(height: 2),
                       Text(
-                        '$subtitle • ${DateFormatter.relative(t.date)}',
+                        '$subtitle \u2022 ${DateFormatter.relative(t.date)}',
                         style: AppTypography.bodySmall,
                       ),
                     ],
                   ),
                 ),
                 hideAmount
-                    ? Text('₹ ••••',
-                        style: AppTypography.currencySmall
-                            .copyWith(color: AppColors.accentViolet))
+                    ? Text(
+                        '\u20B9 \u2022\u2022\u2022\u2022',
+                        style: AppTypography.currencySmall.copyWith(
+                          color: AppColors.accentViolet,
+                        ),
+                      )
                     : AmountText(
                         amount: isIncome ? t.amount : -t.amount,
                         size: AmountSize.small,
                         colored: !isTransfer,
-                        overrideColor:
-                            isTransfer ? AppColors.transfer : null,
+                        overrideColor: isTransfer ? AppColors.transfer : null,
                       ),
               ],
             ),
@@ -463,8 +533,10 @@ class _BudgetSnapshotSection extends ConsumerWidget {
                 const SizedBox(height: 8),
                 Text('No budgets set', style: AppTypography.bodyMedium),
                 const SizedBox(height: 4),
-                Text('Set category budgets to track spending',
-                    style: AppTypography.bodySmall),
+                Text(
+                  'Set category budgets to track spending',
+                  style: AppTypography.bodySmall,
+                ),
               ],
             ),
           );
@@ -509,12 +581,17 @@ class _BudgetSnapshotSection extends ConsumerWidget {
                         children: [
                           Row(
                             children: [
-                              Text(bwc.categoryIcon,
-                                  style: const TextStyle(fontSize: 18)),
+                              Text(
+                                bwc.categoryIcon,
+                                style: const TextStyle(fontSize: 18),
+                              ),
                               const SizedBox(width: 8),
-                              Text(bwc.categoryName,
-                                  style: AppTypography.bodyMedium.copyWith(
-                                      fontWeight: FontWeight.w600)),
+                              Text(
+                                bwc.categoryName,
+                                style: AppTypography.bodyMedium.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                             ],
                           ),
                           Column(

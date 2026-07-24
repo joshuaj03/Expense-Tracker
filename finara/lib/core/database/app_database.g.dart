@@ -3555,7 +3555,10 @@ final class $$AccountsTableReferences
   static MultiTypedResultKey<$CreditCardBillsTable, List<CreditCardBill>>
   _creditCardBillsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
     db.creditCardBills,
-    aliasName: 'accounts__id__credit_card_bills__account_id',
+    aliasName: $_aliasNameGenerator(
+      db.accounts.id,
+      db.creditCardBills.accountId,
+    ),
   );
 
   $$CreditCardBillsTableProcessedTableManager get creditCardBillsRefs {
@@ -4056,7 +4059,9 @@ final class $$CategoriesTableReferences
   $$CategoriesTableReferences(super.$_db, super.$_table, super.$_typedResult);
 
   static $CategoriesTable _parentIdTable(_$AppDatabase db) =>
-      db.categories.createAlias('categories__parent_id__categories__id');
+      db.categories.createAlias(
+        $_aliasNameGenerator(db.categories.parentId, db.categories.id),
+      );
 
   $$CategoriesTableProcessedTableManager? get parentId {
     final $_column = $_itemColumn<int>('parent_id');
@@ -4075,7 +4080,10 @@ final class $$CategoriesTableReferences
   static MultiTypedResultKey<$TransactionsTable, List<Transaction>>
   _transactionsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
     db.transactions,
-    aliasName: 'categories__id__transactions__category_id',
+    aliasName: $_aliasNameGenerator(
+      db.categories.id,
+      db.transactions.categoryId,
+    ),
   );
 
   $$TransactionsTableProcessedTableManager get transactionsRefs {
@@ -4094,7 +4102,7 @@ final class $$CategoriesTableReferences
     _$AppDatabase db,
   ) => MultiTypedResultKey.fromTable(
     db.budgets,
-    aliasName: 'categories__id__budgets__category_id',
+    aliasName: $_aliasNameGenerator(db.categories.id, db.budgets.categoryId),
   );
 
   $$BudgetsTableProcessedTableManager get budgetsRefs {
@@ -4639,7 +4647,9 @@ final class $$TransactionsTableReferences
   $$TransactionsTableReferences(super.$_db, super.$_table, super.$_typedResult);
 
   static $AccountsTable _accountIdTable(_$AppDatabase db) =>
-      db.accounts.createAlias('transactions__account_id__accounts__id');
+      db.accounts.createAlias(
+        $_aliasNameGenerator(db.transactions.accountId, db.accounts.id),
+      );
 
   $$AccountsTableProcessedTableManager get accountId {
     final $_column = $_itemColumn<int>('account_id')!;
@@ -4656,7 +4666,9 @@ final class $$TransactionsTableReferences
   }
 
   static $AccountsTable _toAccountIdTable(_$AppDatabase db) =>
-      db.accounts.createAlias('transactions__to_account_id__accounts__id');
+      db.accounts.createAlias(
+        $_aliasNameGenerator(db.transactions.toAccountId, db.accounts.id),
+      );
 
   $$AccountsTableProcessedTableManager? get toAccountId {
     final $_column = $_itemColumn<int>('to_account_id');
@@ -4673,7 +4685,9 @@ final class $$TransactionsTableReferences
   }
 
   static $CategoriesTable _categoryIdTable(_$AppDatabase db) =>
-      db.categories.createAlias('transactions__category_id__categories__id');
+      db.categories.createAlias(
+        $_aliasNameGenerator(db.transactions.categoryId, db.categories.id),
+      );
 
   $$CategoriesTableProcessedTableManager? get categoryId {
     final $_column = $_itemColumn<int>('category_id');
@@ -5359,7 +5373,9 @@ final class $$BudgetsTableReferences
   $$BudgetsTableReferences(super.$_db, super.$_table, super.$_typedResult);
 
   static $CategoriesTable _categoryIdTable(_$AppDatabase db) =>
-      db.categories.createAlias('budgets__category_id__categories__id');
+      db.categories.createAlias(
+        $_aliasNameGenerator(db.budgets.categoryId, db.categories.id),
+      );
 
   $$CategoriesTableProcessedTableManager get categoryId {
     final $_column = $_itemColumn<int>('category_id')!;
@@ -5774,7 +5790,9 @@ final class $$CreditCardBillsTableReferences
   );
 
   static $AccountsTable _accountIdTable(_$AppDatabase db) =>
-      db.accounts.createAlias('credit_card_bills__account_id__accounts__id');
+      db.accounts.createAlias(
+        $_aliasNameGenerator(db.creditCardBills.accountId, db.accounts.id),
+      );
 
   $$AccountsTableProcessedTableManager get accountId {
     final $_column = $_itemColumn<int>('account_id')!;

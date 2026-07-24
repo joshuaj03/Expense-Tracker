@@ -6,7 +6,7 @@ import '../../../../core/database/app_database.dart';
 import '../../../../core/design_system/app_colors.dart';
 import '../../../../core/design_system/app_typography.dart';
 import '../../../../core/design_system/widgets/empty_state.dart';
-import '../../../../core/providers/providers.dart';
+import 'package:finara/features/accounts/data/accounts_provider.dart';
 import '../../../../core/utils/currency_formatter.dart';
 
 class AccountsScreen extends ConsumerWidget {
@@ -45,7 +45,9 @@ class AccountsScreen extends ConsumerWidget {
 
           final accounts = snapshot.data!;
           final totalBalance = accounts.fold<double>(
-              0, (sum, a) => sum + a.currentBalance);
+            0,
+            (sum, a) => sum + a.currentBalance,
+          );
 
           return ListView(
             physics: const BouncingScrollPhysics(),
@@ -64,14 +66,12 @@ class AccountsScreen extends ConsumerWidget {
                 ),
                 child: Column(
                   children: [
-                    Text('Total Balance',
-                        style: AppTypography.labelMedium),
+                    Text('Total Balance', style: AppTypography.labelMedium),
                     const SizedBox(height: 4),
                     Text(
                       CurrencyFormatter.format(totalBalance),
                       style: AppTypography.currencyLarge.copyWith(
-                        color:
-                            Theme.of(context).textTheme.bodyLarge?.color,
+                        color: Theme.of(context).textTheme.bodyLarge?.color,
                       ),
                     ),
                   ],
@@ -84,14 +84,11 @@ class AccountsScreen extends ConsumerWidget {
                 return Container(
                   margin: const EdgeInsets.only(bottom: 8),
                   child: Material(
-                    color: isDark
-                        ? AppColors.darkCard
-                        : AppColors.lightCard,
+                    color: isDark ? AppColors.darkCard : AppColors.lightCard,
                     borderRadius: BorderRadius.circular(14),
                     child: InkWell(
                       borderRadius: BorderRadius.circular(14),
-                      onTap: () =>
-                          context.push('/edit-account/${account.id}'),
+                      onTap: () => context.push('/edit-account/${account.id}'),
                       child: Padding(
                         padding: const EdgeInsets.all(16),
                         child: Row(
@@ -100,48 +97,61 @@ class AccountsScreen extends ConsumerWidget {
                               width: 44,
                               height: 44,
                               decoration: BoxDecoration(
-                                color: Color(account.color)
-                                    .withValues(alpha: 0.15),
+                                color: Color(
+                                  account.color,
+                                ).withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Center(
-                                child: Text(account.icon,
-                                    style:
-                                        const TextStyle(fontSize: 22)),
+                                child: Text(
+                                  account.icon,
+                                  style: const TextStyle(fontSize: 22),
+                                ),
                               ),
                             ),
                             const SizedBox(width: 14),
                             Expanded(
                               child: Column(
-                                crossAxisAlignment:
-                                    CrossAxisAlignment.start,
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(account.name,
-                                      style: AppTypography.bodyMedium
-                                          .copyWith(
-                                              fontWeight:
-                                                  FontWeight.w600)),
+                                  Text(
+                                    account.name,
+                                    style: AppTypography.bodyMedium.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                                   const SizedBox(height: 2),
-                                  Text(account.type.toUpperCase(),
-                                      style: AppTypography.labelSmall),
-                                  if (account.type == 'creditCard' && account.creditLimit != null) ...[
+                                  Text(
+                                    account.type.toUpperCase(),
+                                    style: AppTypography.labelSmall,
+                                  ),
+                                  if (account.type == 'creditCard' &&
+                                      account.creditLimit != null) ...[
                                     const SizedBox(height: 2),
-                                    Text('Limit: ${CurrencyFormatter.format(account.creditLimit!)} • Due: Day ${account.dueDay ?? '?'}',
-                                        style: AppTypography.labelSmall.copyWith(color: AppColors.accentViolet)),
+                                    Text(
+                                      'Limit: ${CurrencyFormatter.format(account.creditLimit!)} \u2022 Due: Day ${account.dueDay ?? '?'}',
+                                      style: AppTypography.labelSmall.copyWith(
+                                        color: AppColors.accentViolet,
+                                      ),
+                                    ),
                                   ],
-                                  if (account.type == 'loan' && account.loanOriginalPrincipal != null) ...[
+                                  if (account.type == 'loan' &&
+                                      account.loanOriginalPrincipal !=
+                                          null) ...[
                                     const SizedBox(height: 2),
-                                    Text('Principal: ${CurrencyFormatter.format(account.loanOriginalPrincipal!)} • ${account.loanInterestRate ?? 0}% /mo',
-                                        style: AppTypography.labelSmall.copyWith(color: AppColors.accentViolet)),
+                                    Text(
+                                      'Principal: ${CurrencyFormatter.format(account.loanOriginalPrincipal!)} \u2022 ${account.loanInterestRate ?? 0}% /mo',
+                                      style: AppTypography.labelSmall.copyWith(
+                                        color: AppColors.accentViolet,
+                                      ),
+                                    ),
                                   ],
                                 ],
                               ),
                             ),
                             Text(
-                              CurrencyFormatter.format(
-                                  account.currentBalance),
-                              style:
-                                  AppTypography.currencySmall.copyWith(
+                              CurrencyFormatter.format(account.currentBalance),
+                              style: AppTypography.currencySmall.copyWith(
                                 color: account.currentBalance >= 0
                                     ? AppColors.income
                                     : AppColors.expense,

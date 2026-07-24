@@ -1,4 +1,4 @@
-﻿/// NumericKeypad â€” custom calculator-style keypad with +/âˆ’/Ã—/÷ operations.
+/// NumericKeypad â€” custom calculator-style keypad with +/âˆ’/×/÷ operations.
 library;
 
 import 'package:flutter/material.dart';
@@ -21,7 +21,7 @@ class NumericKeypad extends StatelessWidget {
   void _onKey(String key) {
     HapticFeedback.lightImpact();
 
-    if (key == 'âŒ«') {
+    if (key == '⌫') {
       if (value.isNotEmpty) {
         onValueChanged(value.substring(0, value.length - 1));
       }
@@ -40,14 +40,14 @@ class NumericKeypad extends StatelessWidget {
 
     // Prevent multiple dots in the same number segment
     if (key == '.') {
-      final parts = value.split(RegExp(r'[+\-Ã—÷]'));
+      final parts = value.split(RegExp(r'[+\-×÷]'));
       if (parts.last.contains('.')) return;
     }
 
     // Prevent multiple operators in a row
-    if ('+-Ã—÷'.contains(key) && value.isNotEmpty) {
+    if ('+-×÷'.contains(key) && value.isNotEmpty) {
       final lastChar = value[value.length - 1];
-      if ('+-Ã—÷'.contains(lastChar)) {
+      if ('+-×÷'.contains(lastChar)) {
         onValueChanged(value.substring(0, value.length - 1) + key);
         return;
       }
@@ -60,9 +60,7 @@ class NumericKeypad extends StatelessWidget {
     if (value.isEmpty) return;
 
     try {
-      var expr = value
-          .replaceAll('Ã—', '*')
-          .replaceAll('÷', '/');
+      var expr = value.replaceAll('×', '*').replaceAll('÷', '/');
 
       // Simple expression evaluator
       final result = _parseExpression(expr);
@@ -104,8 +102,7 @@ class NumericKeypad extends StatelessWidget {
         if (i > 0 && (tokens[i] == '*' || tokens[i] == '/')) {
           final left = double.parse(tokens[i - 1]);
           final right = double.parse(tokens[i + 1]);
-          final result =
-              tokens[i] == '*' ? left * right : left / right;
+          final result = tokens[i] == '*' ? left * right : left / right;
           tokens.replaceRange(i - 1, i + 2, [result.toString()]);
           i--;
         }
@@ -138,7 +135,7 @@ class NumericKeypad extends StatelessWidget {
 
     const keys = [
       ['7', '8', '9', '÷'],
-      ['4', '5', '6', 'Ã—'],
+      ['4', '5', '6', '×'],
       ['1', '2', '3', '-'],
       ['.', '0', '=', '+'],
     ];
@@ -162,8 +159,8 @@ class NumericKeypad extends StatelessWidget {
               Expanded(
                 flex: 3,
                 child: _KeyButton(
-                  label: 'âŒ«',
-                  onTap: () => _onKey('âŒ«'),
+                  label: '⌫',
+                  onTap: () => _onKey('⌫'),
                   isOperator: true,
                   isDark: isDark,
                 ),
@@ -172,26 +169,30 @@ class NumericKeypad extends StatelessWidget {
           ),
         ),
         // Number pad
-        ...keys.map((row) => Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: Row(
-                children: row
-                    .map((key) => Expanded(
-                          child: Padding(
-                            padding: EdgeInsets.only(
-                              right: key != row.last ? 8 : 0,
-                            ),
-                            child: _KeyButton(
-                              label: key,
-                              onTap: () => _onKey(key),
-                              isOperator: '÷Ã—-+='.contains(key),
-                              isDark: isDark,
-                            ),
-                          ),
-                        ))
-                    .toList(),
-              ),
-            )),
+        ...keys.map(
+          (row) => Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Row(
+              children: row
+                  .map(
+                    (key) => Expanded(
+                      child: Padding(
+                        padding: EdgeInsets.only(
+                          right: key != row.last ? 8 : 0,
+                        ),
+                        child: _KeyButton(
+                          label: key,
+                          onTap: () => _onKey(key),
+                          isOperator: '÷×-+='.contains(key),
+                          isDark: isDark,
+                        ),
+                      ),
+                    ),
+                  )
+                  .toList(),
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -216,8 +217,8 @@ class _KeyButton extends StatelessWidget {
       color: isOperator
           ? AppColors.accentViolet.withValues(alpha: isDark ? 0.15 : 0.1)
           : isDark
-              ? AppColors.darkCard
-              : AppColors.lightCard,
+          ? AppColors.darkCard
+          : AppColors.lightCard,
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         onTap: onTap,

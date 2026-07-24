@@ -1,4 +1,4 @@
-﻿/// BudgetProgressBar â€” gradient fill with over-budget state.
+/// BudgetProgressBar â€” gradient fill with over-budget state.
 library;
 
 import 'package:flutter/material.dart';
@@ -26,8 +26,8 @@ class BudgetProgressBar extends StatelessWidget {
     final barColor = isOverBudget
         ? AppColors.expense
         : progress > 0.8
-            ? AppColors.warning
-            : AppColors.income;
+        ? AppColors.warning
+        : AppColors.income;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

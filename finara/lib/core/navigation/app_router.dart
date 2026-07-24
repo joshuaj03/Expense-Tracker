@@ -21,10 +21,13 @@ import '../../features/developer_log/presentation/screens/developer_log_screen.d
 import '../design_system/app_colors.dart';
 import 'app_drawer.dart';
 
+import '../utils/logger.dart';
+
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 
 final appRouter = GoRouter(
   navigatorKey: _rootNavigatorKey,
+  observers: [AppNavigatorObserver()],
   initialLocation: '/dashboard',
   routes: [
     // Bottom navigation shell â€” 5 tabs
@@ -37,9 +40,8 @@ final appRouter = GoRouter(
           routes: [
             GoRoute(
               path: '/dashboard',
-              pageBuilder: (context, state) => const NoTransitionPage(
-                child: DashboardScreen(),
-              ),
+              pageBuilder: (context, state) =>
+                  const NoTransitionPage(child: DashboardScreen()),
             ),
           ],
         ),
@@ -47,29 +49,8 @@ final appRouter = GoRouter(
           routes: [
             GoRoute(
               path: '/transactions',
-              pageBuilder: (context, state) => const NoTransitionPage(
-                child: TransactionsScreen(),
-              ),
-            ),
-          ],
-        ),
-        StatefulShellBranch(
-          routes: [
-            GoRoute(
-              path: '/accounts',
-              pageBuilder: (context, state) => const NoTransitionPage(
-                child: AccountsScreen(),
-              ),
-            ),
-          ],
-        ),
-        StatefulShellBranch(
-          routes: [
-            GoRoute(
-              path: '/budgets',
-              pageBuilder: (context, state) => const NoTransitionPage(
-                child: BudgetsScreen(),
-              ),
+              pageBuilder: (context, state) =>
+                  const NoTransitionPage(child: TransactionsScreen()),
             ),
           ],
         ),
@@ -77,9 +58,26 @@ final appRouter = GoRouter(
           routes: [
             GoRoute(
               path: '/analytics',
-              pageBuilder: (context, state) => const NoTransitionPage(
-                child: AnalyticsScreen(),
-              ),
+              pageBuilder: (context, state) =>
+                  const NoTransitionPage(child: AnalyticsScreen()),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/accounts',
+              pageBuilder: (context, state) =>
+                  const NoTransitionPage(child: AccountsScreen()),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/budgets',
+              pageBuilder: (context, state) =>
+                  const NoTransitionPage(child: BudgetsScreen()),
             ),
           ],
         ),
@@ -92,19 +90,26 @@ final appRouter = GoRouter(
       parentNavigatorKey: _rootNavigatorKey,
       pageBuilder: (context, state) {
         final editId = state.uri.queryParameters['editId'];
+        final duplicateId = state.uri.queryParameters['duplicateId'];
         return CustomTransitionPage(
           child: AddTransactionScreen(
             editTransactionId: editId != null ? int.tryParse(editId) : null,
+            duplicateTransactionId: duplicateId != null
+                ? int.tryParse(duplicateId)
+                : null,
           ),
           transitionsBuilder: (context, animation, _, child) {
             return SlideTransition(
-              position: Tween<Offset>(
-                begin: const Offset(0, 1),
-                end: Offset.zero,
-              ).animate(CurvedAnimation(
-                parent: animation,
-                curve: Curves.easeOutCubic,
-              )),
+              position:
+                  Tween<Offset>(
+                    begin: const Offset(0, 1),
+                    end: Offset.zero,
+                  ).animate(
+                    CurvedAnimation(
+                      parent: animation,
+                      curve: Curves.easeOutCubic,
+                    ),
+                  ),
               child: child,
             );
           },
@@ -166,55 +171,61 @@ class _AppShell extends StatelessWidget {
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           border: Border(
-            top: BorderSide(
-              color: Theme.of(context).dividerColor,
-              width: 0.5,
-            ),
+            top: BorderSide(color: Theme.of(context).dividerColor, width: 0.5),
           ),
         ),
         child: NavigationBar(
           selectedIndex: navigationShell.currentIndex,
           onDestinationSelected: (index) {
+            AppLogger.instance.nav('Tapped bottom nav tab: index=$index');
             navigationShell.goBranch(
               index,
               initialLocation: index == navigationShell.currentIndex,
             );
           },
-          backgroundColor:
-              Theme.of(context).bottomNavigationBarTheme.backgroundColor,
+          backgroundColor: Theme.of(
+            context,
+          ).bottomNavigationBarTheme.backgroundColor,
           indicatorColor: AppColors.accentViolet.withValues(alpha: 0.15),
           labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
           height: 70,
           destinations: const [
             NavigationDestination(
               icon: Icon(Icons.dashboard_outlined),
-              selectedIcon:
-                  Icon(Icons.dashboard, color: AppColors.accentViolet),
+              selectedIcon: Icon(
+                Icons.dashboard,
+                color: AppColors.accentViolet,
+              ),
               label: 'Home',
             ),
             NavigationDestination(
               icon: Icon(Icons.receipt_long_outlined),
-              selectedIcon:
-                  Icon(Icons.receipt_long, color: AppColors.accentViolet),
+              selectedIcon: Icon(
+                Icons.receipt_long,
+                color: AppColors.accentViolet,
+              ),
               label: 'Records',
             ),
             NavigationDestination(
+              icon: Icon(Icons.insights_outlined),
+              selectedIcon: Icon(Icons.insights, color: AppColors.accentViolet),
+              label: 'Analytics',
+            ),
+            NavigationDestination(
               icon: Icon(Icons.account_balance_wallet_outlined),
-              selectedIcon: Icon(Icons.account_balance_wallet,
-                  color: AppColors.accentViolet),
+              selectedIcon: Icon(
+                Icons.account_balance_wallet,
+                color: AppColors.accentViolet,
+              ),
               label: 'Accounts',
             ),
             NavigationDestination(
               icon: Icon(Icons.pie_chart_outline),
-              selectedIcon:
-                  Icon(Icons.pie_chart, color: AppColors.accentViolet),
+              selectedIcon: Icon(
+                Icons.pie_chart,
+                color: AppColors.accentViolet,
+              ),
               label: 'Budgets',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.insights_outlined),
-              selectedIcon:
-                  Icon(Icons.insights, color: AppColors.accentViolet),
-              label: 'Analytics',
             ),
           ],
         ),

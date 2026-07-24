@@ -11,24 +11,31 @@ import '../../../../core/design_system/app_colors.dart';
 import '../../../../core/design_system/app_typography.dart';
 import '../../../../core/design_system/widgets/numeric_keypad.dart';
 import '../../../../core/design_system/widgets/segmented_control.dart';
-import '../../../../core/providers/providers.dart';
+import 'package:finara/features/categories/data/categories_provider.dart';
+import 'package:finara/features/accounts/data/accounts_provider.dart';
+import 'package:finara/features/transactions/data/transactions_provider.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../widgets/category_picker_sheet.dart';
 import '../widgets/account_picker_sheet.dart';
 import '../widgets/itemized_notes.dart';
+import '../../../../core/utils/logger.dart';
 
 class AddTransactionScreen extends ConsumerStatefulWidget {
   final int? editTransactionId;
+  final int? duplicateTransactionId;
 
-  const AddTransactionScreen({super.key, this.editTransactionId});
+  const AddTransactionScreen({
+    super.key,
+    this.editTransactionId,
+    this.duplicateTransactionId,
+  });
 
   @override
   ConsumerState<AddTransactionScreen> createState() =>
       _AddTransactionScreenState();
 }
 
-class _AddTransactionScreenState
-    extends ConsumerState<AddTransactionScreen> {
+class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   TransactionType _type = TransactionType.expense;
   String _amount = '';
   Account? _selectedAccount;
@@ -60,6 +67,9 @@ class _AddTransactionScreenState
   }
 
   Future<void> _loadData() async {
+    final log = AppLogger.instance;
+    log.ui('AddTransactionScreen loaded (isEditing=$_isEditing)');
+
     final accountsDao = ref.read(accountsDaoProvider);
     final categoriesDao = ref.read(categoriesDaoProvider);
 
@@ -74,20 +84,27 @@ class _AddTransactionScreenState
       }
     });
 
-    // Load existing transaction for editing
-    if (_isEditing) {
+    // Load existing transaction for editing or duplicating
+    if (_isEditing || widget.duplicateTransactionId != null) {
       final dao = ref.read(transactionsDaoProvider);
-      final txn = await dao.getTransactionById(widget.editTransactionId!);
+      final idToLoad =
+          widget.editTransactionId ?? widget.duplicateTransactionId!;
+      final txn = await dao.getTransactionById(idToLoad);
       if (txn != null) {
         setState(() {
           _type = TransactionType.values.firstWhere(
-              (t) => t.name == txn.type,
-              orElse: () => TransactionType.expense);
+            (t) => t.name == txn.type,
+            orElse: () => TransactionType.expense,
+          );
           _amount = txn.amount.toString();
-          _date = txn.date;
+          // If duplicating, keep today's date
+          if (_isEditing) {
+            _date = txn.date;
+          }
           _noteController.text = txn.note;
-          _selectedAccount =
-              accounts.where((a) => a.id == txn.accountId).firstOrNull;
+          _selectedAccount = accounts
+              .where((a) => a.id == txn.accountId)
+              .firstOrNull;
           if (txn.toAccountId != null) {
             _selectedToAccount = accounts
                 .where((a) => a.id == txn.toAccountId)
@@ -97,6 +114,20 @@ class _AddTransactionScreenState
             _selectedCategory = categories
                 .where((c) => c.id == txn.categoryId)
                 .firstOrNull;
+          }
+          
+          if (txn.itemizedListJson != null && txn.itemizedListJson!.isNotEmpty) {
+            try {
+              final items = jsonDecode(txn.itemizedListJson!) as List<dynamic>;
+              for (final e in items) {
+                final item = e['item'] as String? ?? '';
+                final qty = (e['qty'] as num?)?.toDouble() ?? 1;
+                final price = (e['price'] as num?)?.toDouble() ?? 0;
+                _itemEntries.add(ItemEntry(item: item, qty: qty, price: price));
+              }
+            } catch (e) {
+              log.error('Failed to parse itemizedListJson: $e');
+            }
           }
         });
       }
@@ -113,8 +144,10 @@ class _AddTransactionScreenState
   }
 
   Future<void> _saveTransaction() async {
+    final log = AppLogger.instance;
     final amount = _effectiveAmount;
     if (amount <= 0) {
+      log.ui('Save failed: invalid amount');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter a valid amount')),
       );
@@ -122,20 +155,23 @@ class _AddTransactionScreenState
     }
 
     if (_selectedAccount == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select an account')),
-      );
+      log.ui('Save failed: missing account');
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please select an account')));
       return;
     }
 
     if (_type != TransactionType.transfer && _selectedCategory == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a category')),
-      );
+      log.ui('Save failed: missing category');
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please select a category')));
       return;
     }
 
     if (_type == TransactionType.transfer && _selectedToAccount == null) {
+      log.ui('Save failed: missing destination account');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please select destination account')),
       );
@@ -144,18 +180,16 @@ class _AddTransactionScreenState
 
     // Build notes
     String notes = _noteController.text.trim();
-    if (_isItemized && _itemEntries.isNotEmpty) {
-      notes = itemizedToText(_itemEntries);
-    }
+    final validItems = _itemEntries.where((e) => e.item.trim().isNotEmpty).toList();
 
     // Itemized info JSON
     String? itemizedInfo;
-    if (_isItemized && _itemEntries.isNotEmpty) {
-      itemizedInfo = jsonEncode(_itemEntries.map((e) => {
-        'item': e.item,
-        'qty': e.qty,
-        'price': e.price,
-      }).toList());
+    if (validItems.isNotEmpty) {
+      itemizedInfo = jsonEncode(
+        validItems
+            .map((e) => {'item': e.item.trim(), 'qty': e.qty, 'price': e.price})
+            .toList(),
+      );
     }
 
     // Split info calculation
@@ -183,12 +217,11 @@ class _AddTransactionScreenState
     );
 
     if (_isEditing) {
-      await dao.updateTransaction(
-        widget.editTransactionId!,
-        companion,
-      );
+      await dao.updateTransaction(widget.editTransactionId!, companion);
+      log.ui('Saved edits to transaction id=${widget.editTransactionId}');
     } else {
-      await dao.insertTransaction(companion);
+      await dao.insertTransactionWithBalance(companion);
+      log.ui('Saved new transaction');
     }
 
     if (mounted) {
@@ -204,8 +237,7 @@ class _AddTransactionScreenState
       builder: (_) => CategoryPickerSheet(
         categories: _categories,
         selectedId: _selectedCategory?.id,
-        transactionType:
-            _type == TransactionType.income ? 'income' : 'expense',
+        transactionType: _type == TransactionType.income ? 'income' : 'expense',
       ),
     );
     if (result != null) {
@@ -260,15 +292,17 @@ class _AddTransactionScreenState
         actions: [
           if (_isEditing)
             IconButton(
-              icon: const Icon(Icons.delete_outline,
-                  color: AppColors.expense),
+              icon: const Icon(Icons.delete_outline, color: AppColors.expense),
               onPressed: _confirmDelete,
             ),
           TextButton(
             onPressed: _saveTransaction,
-            child: Text('Save',
-                style: AppTypography.labelLarge
-                    .copyWith(color: AppColors.accentViolet)),
+            child: Text(
+              'Save',
+              style: AppTypography.labelLarge.copyWith(
+                color: AppColors.accentViolet,
+              ),
+            ),
           ),
         ],
       ),
@@ -277,7 +311,12 @@ class _AddTransactionScreenState
           // Scrollable top section
           Expanded(
             child: SingleChildScrollView(
-              padding: EdgeInsets.fromLTRB(16, 8, 16, 16 + MediaQuery.of(context).viewInsets.bottom),
+              padding: EdgeInsets.fromLTRB(
+                16,
+                8,
+                16,
+                16 + MediaQuery.of(context).viewInsets.bottom,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -291,7 +330,8 @@ class _AddTransactionScreenState
                       TransactionType.expense => AppColors.expense,
                       TransactionType.transfer => AppColors.transfer,
                       TransactionType.creditCardPayment => AppColors.transfer,
-                      TransactionType.loanPrincipalRepayment => AppColors.transfer,
+                      TransactionType.loanPrincipalRepayment =>
+                        AppColors.transfer,
                       TransactionType.loanInterest => AppColors.expense,
                     },
                     onChanged: (t) => setState(() {
@@ -306,32 +346,36 @@ class _AddTransactionScreenState
                     onTap: () => setState(() => _isEditingCustomShare = false),
                     child: Center(
                       child: Column(
-                      children: [
-                        Text(
-                          _amount.isEmpty ? '₹0' : '₹$_amount',
-                          style: AppTypography.currencyLarge.copyWith(
-                            fontSize: 40,
-                            color: switch (_type) {
-                              TransactionType.income => AppColors.income,
-                              TransactionType.expense => AppColors.expense,
-                              TransactionType.transfer => AppColors.transfer,
-                              TransactionType.creditCardPayment => AppColors.transfer,
-                              TransactionType.loanPrincipalRepayment => AppColors.transfer,
-                              TransactionType.loanInterest => AppColors.expense,
-                            },
-                          ),
-                        ),
-                        if (_isSplit) ...[
-                          const SizedBox(height: 4),
+                        children: [
                           Text(
-                            'My share: ₹${_effectiveAmount.toStringAsFixed(2)}',
-                            style: AppTypography.bodySmall.copyWith(
-                                color: AppColors.accentViolet),
+                            _amount.isEmpty ? '\u20B90' : '\u20B9$_amount',
+                            style: AppTypography.currencyLarge.copyWith(
+                              fontSize: 40,
+                              color: switch (_type) {
+                                TransactionType.income => AppColors.income,
+                                TransactionType.expense => AppColors.expense,
+                                TransactionType.transfer => AppColors.transfer,
+                                TransactionType.creditCardPayment =>
+                                  AppColors.transfer,
+                                TransactionType.loanPrincipalRepayment =>
+                                  AppColors.transfer,
+                                TransactionType.loanInterest =>
+                                  AppColors.expense,
+                              },
+                            ),
                           ),
+                          if (_isSplit) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              'My share: \u20B9${_effectiveAmount.toStringAsFixed(2)}',
+                              style: AppTypography.bodySmall.copyWith(
+                                color: AppColors.accentViolet,
+                              ),
+                            ),
+                          ],
                         ],
-                      ],
+                      ),
                     ),
-                  ),
                   ),
                   const SizedBox(height: 16),
 
@@ -349,8 +393,7 @@ class _AddTransactionScreenState
                     _PickerTile(
                       label: 'To Account',
                       icon: _selectedToAccount?.icon ?? 'ðŸ¦',
-                      value:
-                          _selectedToAccount?.name ?? 'Select destination',
+                      value: _selectedToAccount?.name ?? 'Select destination',
                       onTap: () => _openAccountPicker(isTo: true),
                     ),
                   ],
@@ -415,15 +458,15 @@ class _AddTransactionScreenState
                     isSplit: _isSplit,
                     onSplitChanged: (v) => setState(() => _isSplit = v),
                     people: _splitPeople,
-                    onPeopleChanged: (v) =>
-                        setState(() => _splitPeople = v),
+                    onPeopleChanged: (v) => setState(() => _splitPeople = v),
                     isCustomShare: _splitCustomShare,
                     onCustomChanged: (v) =>
                         setState(() => _splitCustomShare = v),
                     customShareController: _customShareController,
                     totalAmount: double.tryParse(_amount) ?? 0,
                     isEditingCustomShare: _isEditingCustomShare,
-                    onCustomShareTap: () => setState(() => _isEditingCustomShare = true),
+                    onCustomShareTap: () =>
+                        setState(() => _isEditingCustomShare = true),
                   ),
                 ],
               ),
@@ -450,7 +493,9 @@ class _AddTransactionScreenState
                     Padding(
                       padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
                       child: NumericKeypad(
-                        value: _isEditingCustomShare ? _customShareController.text : _amount,
+                        value: _isEditingCustomShare
+                            ? _customShareController.text
+                            : _amount,
                         onValueChanged: (v) {
                           setState(() {
                             if (_isEditingCustomShare) {
@@ -476,16 +521,20 @@ class _AddTransactionScreenState
                                 context: context,
                                 initialDate: _date,
                                 firstDate: DateTime(2020),
-                                lastDate: DateTime.now()
-                                    .add(const Duration(days: 1)),
+                                lastDate: DateTime.now().add(
+                                  const Duration(days: 1),
+                                ),
                               );
                               if (date != null) {
-                                setState(() => _date = DateTime(
+                                setState(
+                                  () => _date = DateTime(
                                     date.year,
                                     date.month,
                                     date.day,
                                     _date.hour,
-                                    _date.minute));
+                                    _date.minute,
+                                  ),
+                                );
                               }
                             },
                           ),
@@ -498,16 +547,18 @@ class _AddTransactionScreenState
                             onTap: () async {
                               final time = await showTimePicker(
                                 context: context,
-                                initialTime:
-                                    TimeOfDay.fromDateTime(_date),
+                                initialTime: TimeOfDay.fromDateTime(_date),
                               );
                               if (time != null) {
-                                setState(() => _date = DateTime(
+                                setState(
+                                  () => _date = DateTime(
                                     _date.year,
                                     _date.month,
                                     _date.day,
                                     time.hour,
-                                    time.minute));
+                                    time.minute,
+                                  ),
+                                );
                               }
                             },
                           ),
@@ -532,12 +583,16 @@ class _AddTransactionScreenState
         content: const Text('This action cannot be undone.'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel')),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
           TextButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Delete',
-                  style: TextStyle(color: AppColors.expense))),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text(
+              'Delete',
+              style: TextStyle(color: AppColors.expense),
+            ),
+          ),
         ],
       ),
     );
@@ -574,8 +629,7 @@ class _PickerTile extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(14),
         child: Padding(
-          padding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Row(
             children: [
               Text(icon, style: const TextStyle(fontSize: 20)),
@@ -586,9 +640,12 @@ class _PickerTile extends StatelessWidget {
                   children: [
                     Text(label, style: AppTypography.labelSmall),
                     const SizedBox(height: 2),
-                    Text(value,
-                        style: AppTypography.bodyMedium
-                            .copyWith(fontWeight: FontWeight.w600)),
+                    Text(
+                      value,
+                      style: AppTypography.bodyMedium.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -624,8 +681,7 @@ class _DateTimeChip extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(10),
         child: Padding(
-          padding:
-              const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -685,8 +741,7 @@ class _SplitPaymentSection extends StatelessWidget {
                 children: [
                   const Icon(Icons.group_outlined, size: 20),
                   const SizedBox(width: 8),
-                  Text('Split Payment',
-                      style: AppTypography.bodyMedium),
+                  Text('Split Payment', style: AppTypography.bodyMedium),
                 ],
               ),
               Switch.adaptive(
@@ -706,8 +761,9 @@ class _SplitPaymentSection extends StatelessWidget {
                     label: const Text('Equal Split'),
                     selected: !isCustomShare,
                     onSelected: (_) => onCustomChanged(false),
-                    selectedColor:
-                        AppColors.accentViolet.withValues(alpha: 0.2),
+                    selectedColor: AppColors.accentViolet.withValues(
+                      alpha: 0.2,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -716,8 +772,9 @@ class _SplitPaymentSection extends StatelessWidget {
                     label: const Text('Custom Share'),
                     selected: isCustomShare,
                     onSelected: (_) => onCustomChanged(true),
-                    selectedColor:
-                        AppColors.accentViolet.withValues(alpha: 0.2),
+                    selectedColor: AppColors.accentViolet.withValues(
+                      alpha: 0.2,
+                    ),
                   ),
                 ),
               ],
@@ -737,15 +794,19 @@ class _SplitPaymentSection extends StatelessWidget {
                   ),
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 8),
+                      horizontal: 20,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
-                      color:
-                          AppColors.accentViolet.withValues(alpha: 0.1),
+                      color: AppColors.accentViolet.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: Text('$people people',
-                        style: AppTypography.bodyMedium
-                            .copyWith(fontWeight: FontWeight.w600)),
+                    child: Text(
+                      '$people people',
+                      style: AppTypography.bodyMedium.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
                   IconButton(
                     onPressed: () => onPeopleChanged(people + 1),
@@ -759,12 +820,17 @@ class _SplitPaymentSection extends StatelessWidget {
                 onTap: onCustomShareTap,
                 child: Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
                   decoration: BoxDecoration(
                     color: isDark ? AppColors.darkCard : Colors.white,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: isEditingCustomShare ? AppColors.accentViolet : Theme.of(context).dividerColor,
+                      color: isEditingCustomShare
+                          ? AppColors.accentViolet
+                          : Theme.of(context).dividerColor,
                       width: isEditingCustomShare ? 2 : 1,
                     ),
                   ),
@@ -773,10 +839,7 @@ class _SplitPaymentSection extends StatelessWidget {
                     children: [
                       Text('My share amount', style: AppTypography.labelSmall),
                       const SizedBox(height: 4),
-                      Text(
-                        '₹ ',
-                        style: AppTypography.bodyMedium,
-                      ),
+                      Text('\u20B9 ', style: AppTypography.bodyMedium),
                     ],
                   ),
                 ),
@@ -787,10 +850,11 @@ class _SplitPaymentSection extends StatelessWidget {
             if (totalAmount > 0)
               Text(
                 isCustomShare
-                    ? 'Total: ₹${totalAmount.toStringAsFixed(2)}'
-                    : 'Total: ₹${totalAmount.toStringAsFixed(2)} ÷ $people = ₹${(totalAmount / people).toStringAsFixed(2)} each',
-                style: AppTypography.bodySmall
-                    .copyWith(color: AppColors.accentViolet),
+                    ? 'Total: \u20B9${totalAmount.toStringAsFixed(2)}'
+                    : 'Total: \u20B9${totalAmount.toStringAsFixed(2)} ÷ $people = \u20B9${(totalAmount / people).toStringAsFixed(2)} each',
+                style: AppTypography.bodySmall.copyWith(
+                  color: AppColors.accentViolet,
+                ),
               ),
           ],
         ],

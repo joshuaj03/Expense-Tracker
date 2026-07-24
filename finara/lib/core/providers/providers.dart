@@ -2,7 +2,6 @@
 library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../database/app_database.dart';
 
 /// The single AppDatabase instance.
@@ -31,49 +30,3 @@ final transactionsDaoProvider = Provider((ref) {
 final budgetsDaoProvider = Provider((ref) {
   return ref.watch(databaseProvider).budgetsDao;
 });
-
-/// Theme mode provider (persisted).
-final themeModeProvider =
-    StateNotifierProvider<ThemeModeNotifier, int>((ref) {
-  return ThemeModeNotifier();
-});
-
-class ThemeModeNotifier extends StateNotifier<int> {
-  ThemeModeNotifier() : super(0) {
-    _load();
-  }
-
-  Future<void> _load() async {
-    final prefs = await SharedPreferences.getInstance();
-    state = prefs.getInt('theme_mode') ?? 0; // 0=system, 1=dark, 2=light
-  }
-
-  Future<void> setMode(int mode) async {
-    state = mode;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('theme_mode', mode);
-  }
-}
-
-/// Setting for hiding only the total balance instead of all balances
-final hideOnlyTotalBalanceProvider =
-    StateNotifierProvider<HideOnlyTotalBalanceNotifier, bool>((ref) {
-  return HideOnlyTotalBalanceNotifier();
-});
-
-class HideOnlyTotalBalanceNotifier extends StateNotifier<bool> {
-  HideOnlyTotalBalanceNotifier() : super(false) {
-    _load();
-  }
-
-  Future<void> _load() async {
-    final prefs = await SharedPreferences.getInstance();
-    state = prefs.getBool('hide_only_total') ?? false;
-  }
-
-  Future<void> setHideOnlyTotal(bool hideOnlyTotal) async {
-    state = hideOnlyTotal;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('hide_only_total', hideOnlyTotal);
-  }
-}

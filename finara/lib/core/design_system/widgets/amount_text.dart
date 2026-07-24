@@ -1,4 +1,4 @@
-﻿/// AmountText â€” auto-colored currency display with sign.
+/// AmountText â€” auto-colored currency display with sign.
 /// Green for positive/income, red/coral for negative/expense.
 library;
 
@@ -33,7 +33,8 @@ class AmountText extends StatelessWidget {
       AmountSize.small => AppTypography.currencySmall,
     };
 
-    final color = overrideColor ??
+    final color =
+        overrideColor ??
         (colored
             ? (amount >= 0 ? AppColors.income : AppColors.expense)
             : Theme.of(context).textTheme.bodyLarge?.color);
@@ -41,9 +42,6 @@ class AmountText extends StatelessWidget {
     final prefix = showSign ? (amount >= 0 ? '+ ' : '- ') : '';
     final formatted = CurrencyFormatter.format(amount.abs());
 
-    return Text(
-      '$prefix$formatted',
-      style: style.copyWith(color: color),
-    );
+    return Text('$prefix$formatted', style: style.copyWith(color: color));
   }
 }

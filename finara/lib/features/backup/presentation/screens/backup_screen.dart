@@ -2,8 +2,7 @@
 library;
 
 import 'dart:io';
-
-import 'package:csv/csv.dart';
+import 'dart:convert';
 import 'package:file_picker/file_picker.dart';
 import 'package:drift/drift.dart' show Value;
 
@@ -13,11 +12,16 @@ import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../../../../core/database/app_database.dart';
-import '../../../../core/database/daos/accounts_dao.dart';
-import '../../../../core/database/daos/categories_dao.dart';
+import '../../../../core/utils/logger.dart';
+import '../../../../core/utils/mbak_decryptor.dart';
+import '../../data/mbak_importer.dart';
+import 'package:finara/features/accounts/data/accounts_dao.dart';
+import 'package:finara/features/categories/data/categories_dao.dart';
 import '../../../../core/design_system/app_colors.dart';
 import '../../../../core/design_system/app_typography.dart';
-import '../../../../core/providers/providers.dart';
+import 'package:finara/features/categories/data/categories_provider.dart';
+import 'package:finara/features/accounts/data/accounts_provider.dart';
+import 'package:finara/features/transactions/data/transactions_provider.dart';
 
 class BackupScreen extends ConsumerWidget {
   const BackupScreen({super.key});
@@ -48,11 +52,10 @@ class BackupScreen extends ConsumerWidget {
             isDark: isDark,
             icon: Icons.download_outlined,
             title: 'Import Data',
-            subtitle:
-                'Restore from a CSV file (MyMoney format supported)',
-            buttonLabel: 'Import CSV',
+            subtitle: 'Restore from a backup file (CSV or .mbak supported)',
+            buttonLabel: 'Import Backup',
             buttonIcon: Icons.file_open,
-            onPressed: () => _importCsv(context, ref),
+            onPressed: () => _importBackup(context, ref),
           ),
           const SizedBox(height: 24),
 
@@ -63,12 +66,16 @@ class BackupScreen extends ConsumerWidget {
               color: AppColors.accentViolet.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                  color: AppColors.accentViolet.withValues(alpha: 0.2)),
+                color: AppColors.accentViolet.withValues(alpha: 0.2),
+              ),
             ),
             child: Row(
               children: [
-                const Icon(Icons.info_outline,
-                    color: AppColors.accentViolet, size: 20),
+                const Icon(
+                  Icons.info_outline,
+                  color: AppColors.accentViolet,
+                  size: 20,
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
@@ -85,11 +92,12 @@ class BackupScreen extends ConsumerWidget {
   }
 
   Future<void> _exportCsv(BuildContext context, WidgetRef ref) async {
+    final log = AppLogger.instance;
+    log.backup('CSV Export started');
     try {
       final dao = ref.read(transactionsDaoProvider);
 
-      final transactions =
-          await dao.watchAllTransactionsWithDetails().first;
+      final transactions = await dao.watchAllTransactionsWithDetails().first;
       final dateFormat = DateFormat('MMM dd, yyyy h:mm a');
 
       final buffer = StringBuffer();
@@ -114,7 +122,8 @@ class BackupScreen extends ConsumerWidget {
         final notes = _escapeCsv(t.note);
 
         buffer.writeln(
-            '"$time","$type","$amount","$category","$account","$notes"');
+          '"$time","$type","$amount","$category","$account","$notes"',
+        );
       }
 
       final dir = await getApplicationDocumentsDirectory();
@@ -122,36 +131,84 @@ class BackupScreen extends ConsumerWidget {
       final file = File('${dir.path}/finara_export_$now.csv');
       await file.writeAsString(buffer.toString());
 
+      log.backup(
+        'CSV Export completed: ${transactions.length} records -> ${file.path}',
+      );
+
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Exported ${transactions.length} records to ${file.path}'),
+            content: Text(
+              'Exported ${transactions.length} records to ${file.path}',
+            ),
             duration: const Duration(seconds: 4),
           ),
         );
       }
-    } catch (e) {
+    } catch (e, st) {
+      log.error('CSV Export failed', e, st);
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Export failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Export failed: $e')));
       }
     }
   }
 
-  Future<void> _importCsv(BuildContext context, WidgetRef ref) async {
+  Future<void> _importBackup(BuildContext context, WidgetRef ref) async {
+    final log = AppLogger.instance;
+    log.backup('Backup Import started');
     try {
-      final result = await FilePicker.pickFiles(
+      final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
-        allowedExtensions: ['csv'],
+        allowedExtensions: ['csv', 'mbak'],
       );
-      if (result == null || result.files.isEmpty) return;
+      if (result == null || result.files.isEmpty) {
+        log.backup('Backup Import cancelled (no file selected)');
+        return;
+      }
 
       final file = File(result.files.first.path!);
-      final csvString = await file.readAsString();
+      log.backup('Selected file for import: ${file.path}');
 
-      final rows = Csv().decode(csvString);
-      if (rows.isEmpty) return;
+      final extension = file.path.split('.').last.toLowerCase();
+
+      if (extension == 'mbak') {
+        // Native .mbak Decryption and Import
+        final decryptedJson = await MbakDecryptor.decrypt(file);
+        final importer = MbakImporter(ref);
+        final importedCount = await importer.importData(decryptedJson);
+
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Successfully imported $importedCount records from .mbak',
+              ),
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
+        return;
+      }
+
+      // Existing CSV Import Logic
+      final bytes = await file.readAsBytes();
+      String csvString;
+      try {
+        csvString = utf8.decode(bytes);
+      } catch (_) {
+        csvString = String.fromCharCodes(
+          bytes,
+        ); // Fallback to basic ASCII/latin1
+      }
+
+      csvString = csvString.replaceAll('\r\n', '\n');
+
+      final lines = csvString.split('\n');
+      if (lines.isEmpty) return;
+
+      final rows = lines.map((line) => line.split(',')).toList();
 
       final accountsDao = ref.read(accountsDaoProvider);
       final categoriesDao = ref.read(categoriesDaoProvider);
@@ -189,31 +246,50 @@ class BackupScreen extends ConsumerWidget {
         if (type == 'transfer') {
           final parts = accountStr.split('->');
           if (parts.length >= 2) {
-            fromAccountId = await _getOrCreateAccount(accountsDao, parts[0].trim());
-            toAccountId = await _getOrCreateAccount(accountsDao, parts[1].trim());
+            fromAccountId = await _getOrCreateAccount(
+              accountsDao,
+              parts[0].trim(),
+            );
+            toAccountId = await _getOrCreateAccount(
+              accountsDao,
+              parts[1].trim(),
+            );
           }
         } else {
-          fromAccountId = await _getOrCreateAccount(accountsDao, accountStr.trim());
+          fromAccountId = await _getOrCreateAccount(
+            accountsDao,
+            accountStr.trim(),
+          );
         }
 
         int? categoryId;
-        if (type != 'transfer' && categoryStr.trim().isNotEmpty && categoryStr.trim() != '  -  ') {
-          categoryId = await _getOrCreateCategory(categoriesDao, categoryStr.trim());
+        if (type != 'transfer' &&
+            categoryStr.trim().isNotEmpty &&
+            categoryStr.trim() != '  -  ') {
+          categoryId = await _getOrCreateCategory(
+            categoriesDao,
+            categoryStr.trim(),
+          );
         }
 
-        if (fromAccountId == null) continue; // Skip if no account could be resolved
+        if (fromAccountId == null)
+          continue; // Skip if no account could be resolved
 
-        await transactionsDao.insertTransaction(TransactionsCompanion.insert(
-          type: type,
-          amount: amount,
-          date: date,
-          accountId: fromAccountId,
-          toAccountId: Value(toAccountId),
-          categoryId: Value(categoryId),
-          note: Value(notesStr),
-        ));
+        await transactionsDao.insertTransaction(
+          TransactionsCompanion.insert(
+            type: type,
+            amount: amount,
+            date: date,
+            accountId: fromAccountId,
+            toAccountId: Value(toAccountId),
+            categoryId: Value(categoryId),
+            note: Value(notesStr),
+          ),
+        );
         imported++;
       }
+
+      log.backup('CSV Import completed: $imported records inserted');
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -223,11 +299,12 @@ class BackupScreen extends ConsumerWidget {
           ),
         );
       }
-    } catch (e) {
+    } catch (e, st) {
+      log.error('Backup Import failed', e, st);
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Import failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Import failed: $e')));
       }
     }
   }
@@ -235,29 +312,37 @@ class BackupScreen extends ConsumerWidget {
   Future<int?> _getOrCreateAccount(AccountsDao dao, String name) async {
     if (name.isEmpty) return null;
     final accounts = await dao.getAllAccounts();
-    final existing = accounts.where((a) => a.name.toLowerCase() == name.toLowerCase()).firstOrNull;
+    final existing = accounts
+        .where((a) => a.name.toLowerCase() == name.toLowerCase())
+        .firstOrNull;
     if (existing != null) return existing.id;
-    return await dao.insertAccount(AccountsCompanion.insert(
-      name: name,
-      type: 'bank',
-      icon: const Value('🏦'),
-      color: const Value(0xFF6C63FF),
-      initialBalance: const Value(0.0),
-      createdAt: Value(DateTime.now()),
-    ));
+    return await dao.insertAccount(
+      AccountsCompanion.insert(
+        name: name,
+        type: 'bank',
+        icon: const Value('🏦'),
+        color: const Value(0xFF6C63FF),
+        initialBalance: const Value(0.0),
+        createdAt: Value(DateTime.now()),
+      ),
+    );
   }
 
   Future<int?> _getOrCreateCategory(CategoriesDao dao, String name) async {
     if (name.isEmpty) return null;
     final categories = await dao.getAllCategories();
-    final existing = categories.where((c) => c.name.toLowerCase() == name.toLowerCase()).firstOrNull;
+    final existing = categories
+        .where((c) => c.name.toLowerCase() == name.toLowerCase())
+        .firstOrNull;
     if (existing != null) return existing.id;
-    return await dao.insertCategory(CategoriesCompanion.insert(
-      name: name,
-      icon: const Value('📌'),
-      color: const Value(0xFF6C63FF),
-      type: 'expense',
-    ));
+    return await dao.insertCategory(
+      CategoriesCompanion.insert(
+        name: name,
+        icon: const Value('📌'),
+        color: const Value(0xFF6C63FF),
+        type: 'expense',
+      ),
+    );
   }
 
   String _escapeCsv(String value) {
@@ -303,8 +388,7 @@ class _SectionCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title,
-                        style: AppTypography.headlineSmall),
+                    Text(title, style: AppTypography.headlineSmall),
                     const SizedBox(height: 2),
                     Text(subtitle, style: AppTypography.bodySmall),
                   ],

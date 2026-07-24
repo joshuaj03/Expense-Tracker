@@ -4,9 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/design_system/app_colors.dart';
 import '../../../../core/design_system/app_typography.dart';
-import '../../../../core/providers/providers.dart';
-import '../../../../core/services/notification_service.dart';
-import '../../../../core/utils/currency_formatter.dart';
+import 'package:finara/core/services/notification_service.dart';
+import 'package:finara/features/accounts/data/accounts_provider.dart';
 
 class CreditCardRemindersCard extends ConsumerWidget {
   const CreditCardRemindersCard({super.key});
@@ -22,8 +21,7 @@ class CreditCardRemindersCard extends ConsumerWidget {
         if (!snapshot.hasData) return const SizedBox.shrink();
 
         final ccAccounts = snapshot.data!
-            .where((a) =>
-                a.type == 'creditCard' && a.billGenerationDay != null)
+            .where((a) => a.type == 'creditCard' && a.billGenerationDay != null)
             .toList();
 
         if (ccAccounts.isEmpty) return const SizedBox.shrink();
@@ -36,20 +34,34 @@ class CreditCardRemindersCard extends ConsumerWidget {
                 if (!billSnap.hasData) return const SizedBox.shrink();
 
                 final bills = billSnap.data!;
-                
+
                 // Determine the billing month we are currently in
                 // E.g., if today is 15th and gen is 10th -> billing month is current month
                 // if today is 5th and gen is 10th -> billing month is previous month
-                DateTime currentBillGenDate = DateTime(now.year, now.month, account.billGenerationDay!, 0, 0);
+                DateTime currentBillGenDate = DateTime(
+                  now.year,
+                  now.month,
+                  account.billGenerationDay!,
+                  0,
+                  0,
+                );
                 if (now.isBefore(currentBillGenDate)) {
-                  currentBillGenDate = DateTime(now.year, now.month - 1, account.billGenerationDay!, 0, 0);
+                  currentBillGenDate = DateTime(
+                    now.year,
+                    now.month - 1,
+                    account.billGenerationDay!,
+                    0,
+                    0,
+                  );
                 }
 
                 // Check if paid
-                final isPaid = bills.any((b) =>
-                    b.billingMonth == currentBillGenDate.month &&
-                    b.billingYear == currentBillGenDate.year &&
-                    b.isPaid);
+                final isPaid = bills.any(
+                  (b) =>
+                      b.billingMonth == currentBillGenDate.month &&
+                      b.billingYear == currentBillGenDate.year &&
+                      b.isPaid,
+                );
 
                 if (isPaid) return const SizedBox.shrink();
 
@@ -67,11 +79,16 @@ class CreditCardRemindersCard extends ConsumerWidget {
                     children: [
                       Row(
                         children: [
-                          const Icon(Icons.warning_amber_rounded, color: AppColors.expense),
+                          const Icon(
+                            Icons.warning_amber_rounded,
+                            color: AppColors.expense,
+                          ),
                           const SizedBox(width: 8),
                           Text(
                             'Action Required',
-                            style: AppTypography.labelMedium.copyWith(color: AppColors.expense),
+                            style: AppTypography.labelMedium.copyWith(
+                              color: AppColors.expense,
+                            ),
                           ),
                         ],
                       ),
@@ -93,11 +110,17 @@ class CreditCardRemindersCard extends ConsumerWidget {
                                   currentBillGenDate.year,
                                 );
                                 // Cancel notifications for this account
-                                await ref.read(notificationServiceProvider).cancelAccountReminders(account.id);
-                                
+                                await ref
+                                    .read(notificationServiceProvider)
+                                    .cancelAccountReminders(account.id);
+
                                 if (context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('${account.name} bill marked as paid!')),
+                                    SnackBar(
+                                      content: Text(
+                                        '${account.name} bill marked as paid!',
+                                      ),
+                                    ),
                                   );
                                 }
                               },

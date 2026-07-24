@@ -1,4 +1,4 @@
-﻿/// EmptyState â€” friendly placeholder for empty lists/screens.
+/// EmptyState â€” friendly placeholder for empty lists/screens.
 library;
 
 import 'package:flutter/material.dart';
@@ -45,10 +45,7 @@ class EmptyState extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
             ],
-            if (action != null) ...[
-              const SizedBox(height: 24),
-              action!,
-            ],
+            if (action != null) ...[const SizedBox(height: 24), action!],
           ],
         ),
       ),

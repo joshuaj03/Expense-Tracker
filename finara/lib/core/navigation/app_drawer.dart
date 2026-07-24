@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../design_system/app_colors.dart';
 import '../design_system/app_typography.dart';
+import '../utils/logger.dart';
 
 class AppDrawer extends StatelessWidget {
   const AppDrawer({super.key});
@@ -33,11 +34,14 @@ class AppDrawer extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Center(
-                      child: Text('F',
-                          style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w800,
-                              fontSize: 22)),
+                      child: Text(
+                        'F',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 22,
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -45,8 +49,10 @@ class AppDrawer extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text('Finara', style: AppTypography.displaySmall),
-                      Text('Personal Finance OS',
-                          style: AppTypography.bodySmall),
+                      Text(
+                        'Personal Finance OS',
+                        style: AppTypography.bodySmall,
+                      ),
                     ],
                   ),
                 ],
@@ -60,6 +66,7 @@ class AppDrawer extends StatelessWidget {
               icon: Icons.settings_outlined,
               label: 'Settings',
               onTap: () {
+                AppLogger.instance.ui('Drawer tapped: Settings');
                 Navigator.pop(context);
                 context.push('/settings');
               },
@@ -68,6 +75,7 @@ class AppDrawer extends StatelessWidget {
               icon: Icons.backup_outlined,
               label: 'Backup & Restore',
               onTap: () {
+                AppLogger.instance.ui('Drawer tapped: Backup & Restore');
                 Navigator.pop(context);
                 context.push('/backup');
               },
@@ -76,6 +84,7 @@ class AppDrawer extends StatelessWidget {
               icon: Icons.category_outlined,
               label: 'Categories',
               onTap: () {
+                AppLogger.instance.ui('Drawer tapped: Categories');
                 Navigator.pop(context);
                 context.push('/categories');
               },
@@ -83,8 +92,9 @@ class AppDrawer extends StatelessWidget {
             const Divider(),
             _DrawerItem(
               icon: Icons.bug_report_outlined,
-              label: 'Developer Log',
+              label: 'Logs',
               onTap: () {
+                AppLogger.instance.ui('Drawer tapped: Logs');
                 Navigator.pop(context);
                 context.push('/dev-log');
               },
@@ -95,10 +105,7 @@ class AppDrawer extends StatelessWidget {
             // Footer
             Padding(
               padding: const EdgeInsets.all(20),
-              child: Text(
-                'v0.0.20 Alpha',
-                style: AppTypography.labelSmall,
-              ),
+              child: Text('v0.0.20 Alpha', style: AppTypography.labelSmall),
             ),
           ],
         ),

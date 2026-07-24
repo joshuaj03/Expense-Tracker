@@ -1,4 +1,4 @@
-﻿/// Finara color system â€” dark-first with full light mode parity.
+/// Finara color system â€” dark-first with full light mode parity.
 library;
 
 import 'package:flutter/material.dart';
@@ -44,18 +44,36 @@ class AppColors {
   static const Color lightTextTertiary = Color(0xFF9E9EB8);
 
   // ── Glass Effect ──
-  static Color glassWhite(double opacity) => Colors.white.withValues(alpha: opacity);
-  static Color glassBlack(double opacity) => Colors.black.withValues(alpha: opacity);
+  static Color glassWhite(double opacity) =>
+      Colors.white.withValues(alpha: opacity);
+  static Color glassBlack(double opacity) =>
+      Colors.black.withValues(alpha: opacity);
 
   // ── Category Palette (24 curated colors) ──
   static const List<Color> categoryPalette = [
-    Color(0xFFFF6B6B), Color(0xFFFF8E53), Color(0xFFFFB74D),
-    Color(0xFFFFD54F), Color(0xFF81C784), Color(0xFF66BB6A),
-    Color(0xFF4ECDC4), Color(0xFF26C6DA), Color(0xFF42A5F5),
-    Color(0xFF5C6BC0), Color(0xFF7C4DFF), Color(0xFFAB47BC),
-    Color(0xFFEC407A), Color(0xFFE040FB), Color(0xFFBA68C8),
-    Color(0xFF78909C), Color(0xFF8D6E63), Color(0xFF26A69A),
-    Color(0xFFFF7043), Color(0xFFF06292), Color(0xFF7986CB),
-    Color(0xFF4DB6AC), Color(0xFFAED581), Color(0xFFDCE775),
+    Color(0xFFFF6B6B),
+    Color(0xFFFF8E53),
+    Color(0xFFFFB74D),
+    Color(0xFFFFD54F),
+    Color(0xFF81C784),
+    Color(0xFF66BB6A),
+    Color(0xFF4ECDC4),
+    Color(0xFF26C6DA),
+    Color(0xFF42A5F5),
+    Color(0xFF5C6BC0),
+    Color(0xFF7C4DFF),
+    Color(0xFFAB47BC),
+    Color(0xFFEC407A),
+    Color(0xFFE040FB),
+    Color(0xFFBA68C8),
+    Color(0xFF78909C),
+    Color(0xFF8D6E63),
+    Color(0xFF26A69A),
+    Color(0xFFFF7043),
+    Color(0xFFF06292),
+    Color(0xFF7986CB),
+    Color(0xFF4DB6AC),
+    Color(0xFFAED581),
+    Color(0xFFDCE775),
   ];
 }

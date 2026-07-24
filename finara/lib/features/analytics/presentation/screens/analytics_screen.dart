@@ -1,15 +1,16 @@
-﻿import 'package:fl_chart/fl_chart.dart';
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/database/app_database.dart';
-import '../../../../core/database/daos/transactions_dao.dart';
-import '../../../../core/database/daos/categories_dao.dart';
+import 'package:finara/features/transactions/data/transactions_dao.dart';
+import 'package:finara/features/categories/data/categories_dao.dart';
 import '../../../../core/design_system/app_colors.dart';
 import '../../../../core/design_system/app_typography.dart';
 
 import '../../../../core/design_system/widgets/empty_state.dart';
-import '../../../../core/providers/providers.dart';
+import 'package:finara/features/categories/data/categories_provider.dart';
+import 'package:finara/features/transactions/data/transactions_provider.dart';
 import '../../../../core/utils/currency_formatter.dart';
 
 typedef MonthlyTrend = ({int year, int month, double income, double expense});
@@ -18,8 +19,7 @@ class AnalyticsScreen extends ConsumerStatefulWidget {
   const AnalyticsScreen({super.key});
 
   @override
-  ConsumerState<AnalyticsScreen> createState() =>
-      _AnalyticsScreenState();
+  ConsumerState<AnalyticsScreen> createState() => _AnalyticsScreenState();
 }
 
 class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
@@ -87,8 +87,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
             const SizedBox(height: 24),
 
             // Spending donut chart
-            Text('Spending by Category',
-                style: AppTypography.headlineSmall),
+            Text('Spending by Category', style: AppTypography.headlineSmall),
             const SizedBox(height: 16),
             _SpendingDonutChart(
               transactionsDao: transactionsDao,
@@ -127,18 +126,12 @@ class _MonthSelector extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        IconButton(
-          icon: const Icon(Icons.chevron_left),
-          onPressed: onPrevious,
-        ),
+        IconButton(icon: const Icon(Icons.chevron_left), onPressed: onPrevious),
         Text(
           DateFormatter.monthYear(DateTime(year, month)),
           style: AppTypography.headlineMedium,
         ),
-        IconButton(
-          icon: const Icon(Icons.chevron_right),
-          onPressed: onNext,
-        ),
+        IconButton(icon: const Icon(Icons.chevron_right), onPressed: onNext),
       ],
     );
   }
@@ -278,8 +271,7 @@ class _SpendingDonutChart extends StatelessWidget {
         }
 
         final spending = spendingSnap.data!;
-        final total =
-            spending.values.fold<double>(0, (s, v) => s + v);
+        final total = spending.values.fold<double>(0, (s, v) => s + v);
 
         return FutureBuilder<List<Category>>(
           future: categoriesDao.getAllCategories(),
@@ -303,16 +295,13 @@ class _SpendingDonutChart extends StatelessWidget {
                         final pct = total > 0 ? e.value / total * 100 : 0.0;
                         return PieChartSectionData(
                           value: e.value,
-                          title: pct >= 5
-                              ? '${pct.round()}%'
-                              : '',
-                          color: Color(
-                              cat?.color ?? 0xFF6C63FF),
+                          title: pct >= 5 ? '${pct.round()}%' : '',
+                          color: Color(cat?.color ?? 0xFF6C63FF),
                           radius: 35,
-                          titleStyle: AppTypography.labelSmall
-                              .copyWith(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w700),
+                          titleStyle: AppTypography.labelSmall.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                          ),
                         );
                       }).toList(),
                     ),
@@ -322,8 +311,7 @@ class _SpendingDonutChart extends StatelessWidget {
                 // Legend
                 ...entries.take(8).map((e) {
                   final cat = catMap[e.key];
-                  final pct =
-                      total > 0 ? (e.value / total * 100) : 0.0;
+                  final pct = total > 0 ? (e.value / total * 100) : 0.0;
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 8),
                     child: Row(
@@ -332,16 +320,15 @@ class _SpendingDonutChart extends StatelessWidget {
                           width: 12,
                           height: 12,
                           decoration: BoxDecoration(
-                            color: Color(
-                                cat?.color ?? 0xFF6C63FF),
-                            borderRadius:
-                                BorderRadius.circular(3),
+                            color: Color(cat?.color ?? 0xFF6C63FF),
+                            borderRadius: BorderRadius.circular(3),
                           ),
                         ),
                         const SizedBox(width: 8),
-                        Text(cat?.icon ?? '📌',
-                            style:
-                                const TextStyle(fontSize: 14)),
+                        Text(
+                          cat?.icon ?? '📌',
+                          style: const TextStyle(fontSize: 14),
+                        ),
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
@@ -416,9 +403,8 @@ class _MonthlyTrendChart extends StatelessWidget {
                     getTitlesWidget: (value, meta) {
                       final idx = value.toInt();
                       if (idx >= 0 && idx < data.length) {
-                         return Text(
-                          DateFormatter.monthAbbr(
-                              data[idx].month),
+                        return Text(
+                          DateFormatter.monthAbbr(data[idx].month),
                           style: AppTypography.labelSmall,
                         );
                       }
@@ -439,17 +425,17 @@ class _MonthlyTrendChart extends StatelessWidget {
                   ),
                 ),
                 topTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false)),
+                  sideTitles: SideTitles(showTitles: false),
+                ),
                 rightTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false)),
+                  sideTitles: SideTitles(showTitles: false),
+                ),
               ),
               gridData: FlGridData(
                 show: true,
                 drawVerticalLine: false,
                 getDrawingHorizontalLine: (value) => FlLine(
-                  color: Theme.of(context)
-                      .dividerColor
-                      .withValues(alpha: 0.3),
+                  color: Theme.of(context).dividerColor.withValues(alpha: 0.3),
                   strokeWidth: 0.5,
                 ),
               ),
@@ -463,17 +449,17 @@ class _MonthlyTrendChart extends StatelessWidget {
                       toY: d.income,
                       color: AppColors.income.withValues(alpha: 0.8),
                       width: 12,
-                      borderRadius:
-                          const BorderRadius.vertical(
-                              top: Radius.circular(4)),
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(4),
+                      ),
                     ),
                     BarChartRodData(
                       toY: d.expense,
                       color: AppColors.expense.withValues(alpha: 0.8),
                       width: 12,
-                      borderRadius:
-                          const BorderRadius.vertical(
-                              top: Radius.circular(4)),
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(4),
+                      ),
                     ),
                   ],
                 );

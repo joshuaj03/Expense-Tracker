@@ -7,8 +7,8 @@ import '../../../../core/database/app_database.dart';
 import '../../../../core/database/enums.dart';
 import '../../../../core/design_system/app_colors.dart';
 import '../../../../core/design_system/app_typography.dart';
-import '../../../../core/providers/providers.dart';
-import '../../../../core/services/notification_service.dart';
+import 'package:finara/core/services/notification_service.dart';
+import 'package:finara/features/accounts/data/accounts_provider.dart';
 
 class AddAccountScreen extends ConsumerStatefulWidget {
   final int? editAccountId;
@@ -53,12 +53,15 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
           orElse: () => AccountType.bank,
         );
         _selectedColor = account.color;
-        
+
         _creditLimitController.text = account.creditLimit?.toString() ?? '';
-        _billGenerationDayController.text = account.billGenerationDay?.toString() ?? '';
+        _billGenerationDayController.text =
+            account.billGenerationDay?.toString() ?? '';
         _dueDayController.text = account.dueDay?.toString() ?? '';
-        _loanPrincipalController.text = account.loanOriginalPrincipal?.toString() ?? '';
-        _loanInterestRateController.text = account.loanInterestRate?.toString() ?? '';
+        _loanPrincipalController.text =
+            account.loanOriginalPrincipal?.toString() ?? '';
+        _loanInterestRateController.text =
+            account.loanInterestRate?.toString() ?? '';
       });
     }
   }
@@ -72,8 +75,7 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
       return;
     }
 
-    final balance =
-        double.tryParse(_balanceController.text.trim()) ?? 0;
+    final balance = double.tryParse(_balanceController.text.trim()) ?? 0;
 
     final dao = ref.read(accountsDaoProvider);
 
@@ -102,20 +104,24 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
     int accountId;
     if (widget.editAccountId != null) {
       await dao.updateAccount(
-          companion.copyWith(id: Value(widget.editAccountId!)));
+        companion.copyWith(id: Value(widget.editAccountId!)),
+      );
       accountId = widget.editAccountId!;
     } else {
       accountId = await dao.insertAccount(
-          companion.copyWith(
-            initialBalance: Value(balance),
-            currentBalance: Value(balance),
-          ));
+        companion.copyWith(
+          initialBalance: Value(balance),
+          currentBalance: Value(balance),
+        ),
+      );
     }
 
     if (_accountType == AccountType.creditCard) {
       final billGen = int.tryParse(_billGenerationDayController.text) ?? 1;
       final due = int.tryParse(_dueDayController.text) ?? 20;
-      await ref.read(notificationServiceProvider).scheduleCreditCardReminders(
+      await ref
+          .read(notificationServiceProvider)
+          .scheduleCreditCardReminders(
             accountId: accountId,
             accountName: name,
             billGenerationDay: billGen,
@@ -133,6 +139,7 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
     await dao.deleteAccount(widget.editAccountId!);
     if (mounted) context.pop();
   }
+
   @override
   void dispose() {
     _nameController.dispose();
@@ -153,24 +160,27 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
         actions: [
           if (_isEditing)
             IconButton(
-              icon: const Icon(Icons.delete_outline,
-                  color: AppColors.expense),
+              icon: const Icon(Icons.delete_outline, color: AppColors.expense),
               onPressed: () async {
                 final confirm = await showDialog<bool>(
                   context: context,
                   builder: (ctx) => AlertDialog(
                     title: const Text('Delete Account?'),
                     content: const Text(
-                        'This will remove the account. Transactions will not be deleted.'),
+                      'This will remove the account. Transactions will not be deleted.',
+                    ),
                     actions: [
                       TextButton(
-                          onPressed: () => Navigator.pop(ctx, false),
-                          child: const Text('Cancel')),
+                        onPressed: () => Navigator.pop(ctx, false),
+                        child: const Text('Cancel'),
+                      ),
                       TextButton(
-                          onPressed: () => Navigator.pop(ctx, true),
-                          child: const Text('Delete',
-                              style:
-                                  TextStyle(color: AppColors.expense))),
+                        onPressed: () => Navigator.pop(ctx, true),
+                        child: const Text(
+                          'Delete',
+                          style: TextStyle(color: AppColors.expense),
+                        ),
+                      ),
                     ],
                   ),
                 );
@@ -179,9 +189,12 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
             ),
           TextButton(
             onPressed: _save,
-            child: Text('Save',
-                style: AppTypography.labelLarge
-                    .copyWith(color: AppColors.accentViolet)),
+            child: Text(
+              'Save',
+              style: AppTypography.labelLarge.copyWith(
+                color: AppColors.accentViolet,
+              ),
+            ),
           ),
         ],
       ),
@@ -211,12 +224,9 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
               return ChoiceChip(
                 label: Text(type.displayName),
                 selected: isSelected,
-                onSelected: (_) =>
-                    setState(() => _accountType = type),
-                avatar: Text(type.icon,
-                    style: const TextStyle(fontSize: 14)),
-                selectedColor:
-                    AppColors.accentViolet.withValues(alpha: 0.2),
+                onSelected: (_) => setState(() => _accountType = type),
+                avatar: Text(type.icon, style: const TextStyle(fontSize: 14)),
+                selectedColor: AppColors.accentViolet.withValues(alpha: 0.2),
               );
             }).toList(),
           ),
@@ -226,14 +236,15 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
           TextField(
             controller: _balanceController,
             decoration: InputDecoration(
-              labelText:
-                  _isEditing ? 'Current Balance' : 'Initial Balance',
-              prefixText: '₹ ',
+              labelText: _isEditing ? 'Current Balance' : 'Initial Balance',
+              prefixText: '\u20B9 ',
             ),
             keyboardType: const TextInputType.numberWithOptions(
-                decimal: true, signed: true),
+              decimal: true,
+              signed: true,
+            ),
           ),
-          
+
           if (_accountType == AccountType.creditCard) ...[
             const SizedBox(height: 20),
             Text('Credit Card Details', style: AppTypography.labelLarge),
@@ -242,9 +253,11 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
               controller: _creditLimitController,
               decoration: const InputDecoration(
                 labelText: 'Credit Limit',
-                prefixText: '₹ ',
+                prefixText: '\u20B9 ',
               ),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
             ),
             const SizedBox(height: 10),
             Row(
@@ -252,7 +265,9 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
                 Expanded(
                   child: TextField(
                     controller: _billGenerationDayController,
-                    decoration: const InputDecoration(labelText: 'Bill Gen Day (1-31)'),
+                    decoration: const InputDecoration(
+                      labelText: 'Bill Gen Day (1-31)',
+                    ),
                     keyboardType: TextInputType.number,
                   ),
                 ),
@@ -260,14 +275,16 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
                 Expanded(
                   child: TextField(
                     controller: _dueDayController,
-                    decoration: const InputDecoration(labelText: 'Due Day (1-31)'),
+                    decoration: const InputDecoration(
+                      labelText: 'Due Day (1-31)',
+                    ),
                     keyboardType: TextInputType.number,
                   ),
                 ),
               ],
             ),
           ],
-          
+
           if (_accountType == AccountType.loan) ...[
             const SizedBox(height: 20),
             Text('Loan Details', style: AppTypography.labelLarge),
@@ -276,9 +293,11 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
               controller: _loanPrincipalController,
               decoration: const InputDecoration(
                 labelText: 'Original Principal',
-                prefixText: '₹ ',
+                prefixText: '\u20B9 ',
               ),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
             ),
             const SizedBox(height: 10),
             TextField(
@@ -287,10 +306,12 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
                 labelText: 'Monthly Interest Rate',
                 suffixText: '%',
               ),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
             ),
           ],
-          
+
           const SizedBox(height: 20),
 
           // Color picker
@@ -302,8 +323,7 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
             children: AppColors.categoryPalette.map((color) {
               final isSelected = color.toARGB32() == _selectedColor;
               return GestureDetector(
-                onTap: () =>
-                    setState(() => _selectedColor = color.toARGB32()),
+                onTap: () => setState(() => _selectedColor = color.toARGB32()),
                 child: Container(
                   width: 36,
                   height: 36,
@@ -318,7 +338,7 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
                             BoxShadow(
                               color: color.withValues(alpha: 0.5),
                               blurRadius: 8,
-                            )
+                            ),
                           ]
                         : null,
                   ),

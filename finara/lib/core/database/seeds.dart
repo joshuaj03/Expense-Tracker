@@ -1,4 +1,4 @@
-﻿/// Default seed data for categories â€” pre-populated on first launch.
+/// Default seed data for categories â€” pre-populated on first launch.
 library;
 
 import 'package:drift/drift.dart';
@@ -6,14 +6,14 @@ import 'app_database.dart';
 
 /// Default expense categories with curated icons and colors.
 final List<CategoriesCompanion> defaultExpenseCategories = [
-  _cat('Food & Dining', 'expense', 'ðŸ•', 0xFFFF6B6B, 0),
-  _cat('Groceries', 'expense', 'ðŸ›’', 0xFFFF8E53, 1),
-  _cat('Transport', 'expense', 'ðŸš—', 0xFF4ECDC4, 2),
+  _cat('Food & Dining', 'expense', 'ðŸ\u2022', 0xFFFF6B6B, 0),
+  _cat('Groceries', 'expense', '🛒', 0xFFFF8E53, 1),
+  _cat('Transport', 'expense', '🚗', 0xFF4ECDC4, 2),
   _cat('Shopping', 'expense', 'ðŸ›ï¸', 0xFFE040FB, 3),
-  _cat('Entertainment', 'expense', 'ðŸŽ¬', 0xFFAB47BC, 4),
-  _cat('Bills & Utilities', 'expense', 'ðŸ’¡', 0xFFFFB74D, 5),
+  _cat('Entertainment', 'expense', '🎬', 0xFFAB47BC, 4),
+  _cat('Bills & Utilities', 'expense', '💡', 0xFFFFB74D, 5),
   _cat('Health', 'expense', 'ðŸ¥', 0xFF66BB6A, 6),
-  _cat('Education', 'expense', 'ðŸ“š', 0xFF42A5F5, 7),
+  _cat('Education', 'expense', '📚', 0xFF42A5F5, 7),
   _cat('Rent', 'expense', 'ðŸ ', 0xFF78909C, 8),
   _cat('Personal Care', 'expense', '💇', 0xFFEC407A, 9),
   _cat('Clothing', 'expense', '👗', 0xFFBA68C8, 10),
@@ -37,7 +37,12 @@ final List<CategoriesCompanion> defaultIncomeCategories = [
 ];
 
 CategoriesCompanion _cat(
-    String name, String type, String icon, int color, int order) {
+  String name,
+  String type,
+  String icon,
+  int color,
+  int order,
+) {
   return CategoriesCompanion.insert(
     name: name,
     type: type,
@@ -50,8 +55,9 @@ CategoriesCompanion _cat(
 
 /// Seed the database with default categories if none exist.
 Future<void> seedDefaultCategories(
-    Future<List<Category>> Function() getAll,
-    Future<int> Function(CategoriesCompanion) insert) async {
+  Future<List<Category>> Function() getAll,
+  Future<int> Function(CategoriesCompanion) insert,
+) async {
   final existing = await getAll();
   if (existing.isNotEmpty) return;
 

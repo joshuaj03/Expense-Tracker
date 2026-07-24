@@ -1,4 +1,4 @@
-﻿/// Bottom sheet for selecting an account.
+/// Bottom sheet for selecting an account.
 library;
 
 import 'package:flutter/material.dart';
@@ -35,8 +35,7 @@ class AccountPickerSheet extends StatelessWidget {
       ),
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
-        borderRadius:
-            const BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -69,44 +68,46 @@ class AccountPickerSheet extends StatelessWidget {
                     color: isSelected
                         ? AppColors.accentViolet.withValues(alpha: 0.1)
                         : isDark
-                            ? AppColors.darkCard
-                            : AppColors.lightCard,
+                        ? AppColors.darkCard
+                        : AppColors.lightCard,
                     borderRadius: BorderRadius.circular(14),
                     child: InkWell(
                       borderRadius: BorderRadius.circular(14),
-                      onTap: () =>
-                          Navigator.pop(context, account),
+                      onTap: () => Navigator.pop(context, account),
                       child: Padding(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 14),
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
                         child: Row(
                           children: [
                             Container(
                               width: 42,
                               height: 42,
                               decoration: BoxDecoration(
-                                color: Color(account.color)
-                                    .withValues(alpha: 0.15),
-                                borderRadius:
-                                    BorderRadius.circular(12),
+                                color: Color(
+                                  account.color,
+                                ).withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(12),
                               ),
                               child: Center(
-                                child: Text(account.icon,
-                                    style: const TextStyle(
-                                        fontSize: 20)),
+                                child: Text(
+                                  account.icon,
+                                  style: const TextStyle(fontSize: 20),
+                                ),
                               ),
                             ),
                             const SizedBox(width: 14),
                             Expanded(
                               child: Column(
-                                crossAxisAlignment:
-                                    CrossAxisAlignment.start,
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(account.name,
-                                      style: AppTypography.bodyMedium
-                                          .copyWith(
-                                              fontWeight:
-                                                  FontWeight.w600)),
+                                  Text(
+                                    account.name,
+                                    style: AppTypography.bodyMedium.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                                   const SizedBox(height: 2),
                                   Text(
                                     account.type.toUpperCase(),
@@ -116,10 +117,8 @@ class AccountPickerSheet extends StatelessWidget {
                               ),
                             ),
                             Text(
-                              CurrencyFormatter.compact(
-                                  account.currentBalance),
-                              style:
-                                  AppTypography.currencySmall.copyWith(
+                              CurrencyFormatter.compact(account.currentBalance),
+                              style: AppTypography.currencySmall.copyWith(
                                 color: account.currentBalance >= 0
                                     ? AppColors.income
                                     : AppColors.expense,
@@ -127,9 +126,11 @@ class AccountPickerSheet extends StatelessWidget {
                             ),
                             if (isSelected) ...[
                               const SizedBox(width: 8),
-                              const Icon(Icons.check_circle,
-                                  color: AppColors.accentViolet,
-                                  size: 20),
+                              const Icon(
+                                Icons.check_circle,
+                                color: AppColors.accentViolet,
+                                size: 20,
+                              ),
                             ],
                           ],
                         ),

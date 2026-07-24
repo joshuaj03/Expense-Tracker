@@ -1,4 +1,4 @@
-﻿/// Finara theme â€” dark-first, full light mode parity, system-follow.
+/// Finara theme â€” dark-first, full light mode parity, system-follow.
 library;
 
 import 'package:flutter/material.dart';
@@ -19,10 +19,12 @@ class AppTheme {
     final surface = isDark ? AppColors.darkSurface : AppColors.lightSurface;
     final card = isDark ? AppColors.darkCard : AppColors.lightCard;
     final border = isDark ? AppColors.darkBorder : AppColors.lightBorder;
-    final textPrimary =
-        isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary;
-    final textSecondary =
-        isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
+    final textPrimary = isDark
+        ? AppColors.darkTextPrimary
+        : AppColors.lightTextPrimary;
+    final textSecondary = isDark
+        ? AppColors.darkTextSecondary
+        : AppColors.lightTextSecondary;
 
     final colorScheme = ColorScheme(
       brightness: brightness,
@@ -52,7 +54,9 @@ class AppTheme {
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,
-        titleTextStyle: AppTypography.headlineMedium.copyWith(color: textPrimary),
+        titleTextStyle: AppTypography.headlineMedium.copyWith(
+          color: textPrimary,
+        ),
         systemOverlayStyle: isDark
             ? SystemUiOverlayStyle.light
             : SystemUiOverlayStyle.dark,
@@ -60,7 +64,9 @@ class AppTheme {
 
       // Bottom Navigation
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
-        backgroundColor: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+        backgroundColor: isDark
+            ? AppColors.darkSurface
+            : AppColors.lightSurface,
         selectedItemColor: AppColors.accentViolet,
         unselectedItemColor: textSecondary,
         type: BottomNavigationBarType.fixed,
@@ -94,10 +100,15 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.accentViolet, width: 1.5),
+          borderSide: const BorderSide(
+            color: AppColors.accentViolet,
+            width: 1.5,
+          ),
         ),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
         hintStyle: AppTypography.bodyMedium.copyWith(color: textSecondary),
         labelStyle: AppTypography.bodyMedium.copyWith(color: textSecondary),
       ),
@@ -107,9 +118,7 @@ class AppTheme {
         backgroundColor: AppColors.accentViolet,
         foregroundColor: Colors.white,
         elevation: 4,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
 
       // Bottom Sheet
@@ -127,9 +136,7 @@ class AppTheme {
         backgroundColor: isDark ? AppColors.darkCard : AppColors.lightCard,
         selectedColor: AppColors.accentViolet.withValues(alpha: 0.2),
         side: BorderSide(color: border),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         labelStyle: AppTypography.labelMedium.copyWith(color: textPrimary),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       ),
@@ -137,39 +144,33 @@ class AppTheme {
       // Dialog
       dialogTheme: DialogThemeData(
         backgroundColor: surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       ),
 
       // Snackbar
       snackBarTheme: SnackBarThemeData(
-        backgroundColor: isDark ? AppColors.darkCard : AppColors.lightTextPrimary,
+        backgroundColor: isDark
+            ? AppColors.darkCard
+            : AppColors.lightTextPrimary,
         contentTextStyle: AppTypography.bodyMedium.copyWith(
           color: isDark ? textPrimary : AppColors.lightBackground,
         ),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         behavior: SnackBarBehavior.floating,
       ),
 
       // Divider
-      dividerTheme: DividerThemeData(
-        color: border,
-        thickness: 0.5,
-        space: 0,
-      ),
+      dividerTheme: DividerThemeData(color: border, thickness: 0.5, space: 0),
 
       // Text
       textTheme: TextTheme(
         displayLarge: AppTypography.displayLarge.copyWith(color: textPrimary),
         displayMedium: AppTypography.displayMedium.copyWith(color: textPrimary),
         displaySmall: AppTypography.displaySmall.copyWith(color: textPrimary),
-        headlineMedium:
-            AppTypography.headlineMedium.copyWith(color: textPrimary),
-        headlineSmall:
-            AppTypography.headlineSmall.copyWith(color: textPrimary),
+        headlineMedium: AppTypography.headlineMedium.copyWith(
+          color: textPrimary,
+        ),
+        headlineSmall: AppTypography.headlineSmall.copyWith(color: textPrimary),
         bodyLarge: AppTypography.bodyLarge.copyWith(color: textPrimary),
         bodyMedium: AppTypography.bodyMedium.copyWith(color: textPrimary),
         bodySmall: AppTypography.bodySmall.copyWith(color: textSecondary),

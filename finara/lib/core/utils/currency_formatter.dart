@@ -1,4 +1,4 @@
-﻿/// Currency and date formatting utilities.
+/// Currency and date formatting utilities.
 library;
 
 import 'package:intl/intl.dart';
@@ -6,19 +6,15 @@ import 'package:intl/intl.dart';
 class CurrencyFormatter {
   CurrencyFormatter._();
 
-  static final _formatter = NumberFormat.currency(
-    locale: 'en_IN',
-    symbol: '₹',
-    decimalDigits: 2,
-  );
+  static String symbol = '₹';
 
-  static final _formatterNoDecimal = NumberFormat.currency(
-    locale: 'en_IN',
-    symbol: '₹',
-    decimalDigits: 0,
-  );
+  static NumberFormat get _formatter =>
+      NumberFormat.currency(locale: 'en_IN', symbol: symbol, decimalDigits: 2);
 
-  /// Format amount as ₹1,23,456.78
+  static NumberFormat get _formatterNoDecimal =>
+      NumberFormat.currency(locale: 'en_IN', symbol: symbol, decimalDigits: 0);
+
+  /// Format amount as \u20B91,23,456.78
   static String format(double amount) {
     if (amount == amount.truncateToDouble()) {
       return _formatterNoDecimal.format(amount);
@@ -26,14 +22,14 @@ class CurrencyFormatter {
     return _formatter.format(amount);
   }
 
-  /// Format amount as compact: ₹1.2L, ₹45K, etc.
+  /// Format amount as compact: \u20B91.2L, \u20B945K, etc.
   static String compact(double amount) {
     if (amount.abs() >= 10000000) {
-      return '₹${(amount / 10000000).toStringAsFixed(1)}Cr';
+      return '$symbol${(amount / 10000000).toStringAsFixed(1)}Cr';
     } else if (amount.abs() >= 100000) {
-      return '₹${(amount / 100000).toStringAsFixed(1)}L';
+      return '$symbol${(amount / 100000).toStringAsFixed(1)}L';
     } else if (amount.abs() >= 1000) {
-      return '₹${(amount / 1000).toStringAsFixed(1)}K';
+      return '$symbol${(amount / 1000).toStringAsFixed(1)}K';
     }
     return format(amount);
   }

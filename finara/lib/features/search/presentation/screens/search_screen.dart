@@ -1,12 +1,12 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/database/daos/transactions_dao.dart';
+import 'package:finara/features/transactions/data/transactions_dao.dart';
 import '../../../../core/design_system/app_colors.dart';
 import '../../../../core/design_system/app_typography.dart';
 import '../../../../core/design_system/widgets/amount_text.dart';
 import '../../../../core/design_system/widgets/empty_state.dart';
-import '../../../../core/providers/providers.dart';
+import 'package:finara/features/transactions/data/transactions_provider.dart';
 import '../../../../core/utils/currency_formatter.dart';
 
 class SearchScreen extends ConsumerStatefulWidget {
@@ -64,17 +64,16 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       ),
       body: _query.isEmpty
           ? const EmptyState(
-              icon: 'ðŸ”',
+              icon: '🔍',
               title: 'Search your records',
-              subtitle:
-                  'Search by notes, categories, or account names',
+              subtitle: 'Search by notes, categories, or account names',
             )
           : StreamBuilder<List<TransactionWithDetails>>(
               stream: dao.searchTransactions(_query),
               builder: (context, snapshot) {
                 if (!snapshot.hasData || snapshot.data!.isEmpty) {
                   return const EmptyState(
-                    icon: 'ðŸ¤·',
+                    icon: '🤷',
                     title: 'No results found',
                     subtitle: 'Try a different search term',
                   );
@@ -83,17 +82,14 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                 final results = snapshot.data!;
                 return ListView.builder(
                   physics: const BouncingScrollPhysics(),
-                  padding:
-                      const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                   itemCount: results.length,
                   itemBuilder: (context, index) {
                     final txn = results[index];
                     final t = txn.transaction;
                     final isIncome = t.type == 'income';
                     final isTransfer = t.type == 'transfer';
-                    final icon = isTransfer
-                        ? '🔄'
-                        : (txn.categoryIcon ?? '📌');
+                    final icon = isTransfer ? '🔄' : (txn.categoryIcon ?? '📌');
                     final title = isTransfer
                         ? '${txn.accountName} → ${txn.toAccountName ?? '?'}'
                         : (txn.categoryName ?? 'Uncategorized');
@@ -104,64 +100,60 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                         color: isDark
                             ? AppColors.darkCard
                             : AppColors.lightCard,
-                        borderRadius:
-                            BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(14),
                         child: Padding(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 14),
+                            horizontal: 16,
+                            vertical: 14,
+                          ),
                           child: Row(
                             children: [
                               Container(
                                 width: 42,
                                 height: 42,
                                 decoration: BoxDecoration(
-                                  color: Color(txn.categoryColor ??
-                                          0xFF6C63FF)
-                                      .withValues(alpha: 0.15),
-                                  borderRadius:
-                                      BorderRadius.circular(12),
+                                  color: Color(
+                                    txn.categoryColor ?? 0xFF6C63FF,
+                                  ).withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Center(
-                                  child: Text(icon,
-                                      style: const TextStyle(
-                                          fontSize: 20)),
+                                  child: Text(
+                                    icon,
+                                    style: const TextStyle(fontSize: 20),
+                                  ),
                                 ),
                               ),
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(title,
-                                        style: AppTypography
-                                            .bodyMedium
-                                            .copyWith(
-                                                fontWeight:
-                                                    FontWeight
-                                                        .w600)),
+                                    Text(
+                                      title,
+                                      style: AppTypography.bodyMedium.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
                                     if (t.note.isNotEmpty) ...[
                                       const SizedBox(height: 2),
-                                      Text(t.note,
-                                          style: AppTypography
-                                              .bodySmall,
-                                          maxLines: 1,
-                                          overflow: TextOverflow
-                                              .ellipsis),
+                                      Text(
+                                        t.note,
+                                        style: AppTypography.bodySmall,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
                                     ],
                                     const SizedBox(height: 2),
                                     Text(
-                                      '${txn.accountName} • ${DateFormatter.relative(t.date)}',
-                                      style:
-                                          AppTypography.labelSmall,
+                                      '${txn.accountName} \u2022 ${DateFormatter.relative(t.date)}',
+                                      style: AppTypography.labelSmall,
                                     ),
                                   ],
                                 ),
                               ),
                               AmountText(
-                                amount: isIncome
-                                    ? t.amount
-                                    : -t.amount,
+                                amount: isIncome ? t.amount : -t.amount,
                                 size: AmountSize.small,
                                 colored: !isTransfer,
                                 overrideColor: isTransfer

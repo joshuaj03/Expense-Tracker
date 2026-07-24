@@ -1,4 +1,4 @@
-﻿/// Enums used across the Finara app data model.
+/// Enums used across the Finara app data model.
 library;
 
 /// Account types supported by the app.
@@ -12,24 +12,24 @@ enum AccountType {
   loan;
 
   String get displayName => switch (this) {
-        cash => 'Cash',
-        bank => 'Bank Account',
-        upi => 'UPI',
-        wallet => 'Wallet',
-        creditCard => 'Credit Card',
-        investment => 'Investment',
-        loan => 'Loan',
-      };
+    cash => 'Cash',
+    bank => 'Bank Account',
+    upi => 'UPI',
+    wallet => 'Wallet',
+    creditCard => 'Credit Card',
+    investment => 'Investment',
+    loan => 'Loan',
+  };
 
   String get icon => switch (this) {
-        cash => 'ðŸ’µ',
-        bank => 'ðŸ¦',
-        upi => 'ðŸ“±',
-        wallet => 'ðŸ‘›',
-        creditCard => 'ðŸ’³',
-        investment => '📈',
-        loan => 'ðŸ¦',
-      };
+    cash => '💵',
+    bank => 'ðŸ¦',
+    upi => '📱',
+    wallet => '👛',
+    creditCard => '💳',
+    investment => '📈',
+    loan => 'ðŸ¦',
+  };
 }
 
 /// Transaction types.
@@ -42,21 +42,21 @@ enum TransactionType {
   loanInterest;
 
   String get displayName => switch (this) {
-        income => 'Income',
-        expense => 'Expense',
-        transfer => 'Transfer',
-        creditCardPayment => 'Credit Card Payment',
-        loanPrincipalRepayment => 'Principal Repayment',
-        loanInterest => 'Interest Payment',
-      };
+    income => 'Income',
+    expense => 'Expense',
+    transfer => 'Transfer',
+    creditCardPayment => 'Credit Card Payment',
+    loanPrincipalRepayment => 'Principal Repayment',
+    loanInterest => 'Interest Payment',
+  };
 
   /// Whether this transaction type should be excluded from analytics by default.
   bool get excludedFromAnalytics => switch (this) {
-        transfer => true,
-        creditCardPayment => true,
-        loanPrincipalRepayment => true,
-        _ => false,
-      };
+    transfer => true,
+    creditCardPayment => true,
+    loanPrincipalRepayment => true,
+    _ => false,
+  };
 }
 
 /// Category type â€” income or expense.
@@ -65,7 +65,7 @@ enum CategoryType {
   expense;
 
   String get displayName => switch (this) {
-        income => 'Income',
-        expense => 'Expense',
-      };
+    income => 'Income',
+    expense => 'Expense',
+  };
 }

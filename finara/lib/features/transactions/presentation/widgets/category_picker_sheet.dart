@@ -1,4 +1,4 @@
-﻿/// Bottom sheet for selecting a category.
+/// Bottom sheet for selecting a category.
 library;
 
 import 'package:flutter/material.dart';
@@ -32,8 +32,7 @@ class _CategoryPickerSheetState extends State<CategoryPickerSheet> {
         .toList();
     if (_search.isEmpty) return base;
     return base
-        .where(
-            (c) => c.name.toLowerCase().contains(_search.toLowerCase()))
+        .where((c) => c.name.toLowerCase().contains(_search.toLowerCase()))
         .toList();
   }
 
@@ -67,8 +66,7 @@ class _CategoryPickerSheetState extends State<CategoryPickerSheet> {
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
             child: Column(
               children: [
-                Text('Select Category',
-                    style: AppTypography.headlineSmall),
+                Text('Select Category', style: AppTypography.headlineSmall),
                 const SizedBox(height: 12),
                 TextField(
                   onChanged: (v) => setState(() => _search = v),
@@ -77,7 +75,9 @@ class _CategoryPickerSheetState extends State<CategoryPickerSheet> {
                     prefixIcon: const Icon(Icons.search, size: 20),
                     isDense: true,
                     contentPadding: const EdgeInsets.symmetric(
-                        vertical: 10, horizontal: 12),
+                      vertical: 10,
+                      horizontal: 12,
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide.none,
@@ -113,29 +113,23 @@ class _CategoryPickerSheetState extends State<CategoryPickerSheet> {
                       color: isSelected
                           ? Color(cat.color).withValues(alpha: 0.15)
                           : isDark
-                              ? AppColors.darkCard
-                              : AppColors.lightCard,
+                          ? AppColors.darkCard
+                          : AppColors.lightCard,
                       borderRadius: BorderRadius.circular(14),
                       border: isSelected
-                          ? Border.all(
-                              color: Color(cat.color), width: 1.5)
+                          ? Border.all(color: Color(cat.color), width: 1.5)
                           : null,
                     ),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text(cat.icon,
-                            style: const TextStyle(fontSize: 24)),
+                        Text(cat.icon, style: const TextStyle(fontSize: 24)),
                         const SizedBox(height: 6),
                         Text(
                           cat.name,
                           style: AppTypography.labelSmall.copyWith(
-                            color: isSelected
-                                ? Color(cat.color)
-                                : null,
-                            fontWeight: isSelected
-                                ? FontWeight.w600
-                                : null,
+                            color: isSelected ? Color(cat.color) : null,
+                            fontWeight: isSelected ? FontWeight.w600 : null,
                           ),
                           textAlign: TextAlign.center,
                           maxLines: 2,

@@ -1,4 +1,4 @@
-﻿import 'package:drift/drift.dart' hide Column;
+import 'package:drift/drift.dart' hide Column;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -6,14 +6,13 @@ import '../../../../core/database/app_database.dart';
 import '../../../../core/design_system/app_colors.dart';
 import '../../../../core/design_system/app_typography.dart';
 import '../../../../core/design_system/widgets/empty_state.dart';
-import '../../../../core/providers/providers.dart';
+import 'package:finara/features/categories/data/categories_provider.dart';
 
 class CategoriesScreen extends ConsumerStatefulWidget {
   const CategoriesScreen({super.key});
 
   @override
-  ConsumerState<CategoriesScreen> createState() =>
-      _CategoriesScreenState();
+  ConsumerState<CategoriesScreen> createState() => _CategoriesScreenState();
 }
 
 class _CategoriesScreenState extends ConsumerState<CategoriesScreen>
@@ -41,7 +40,9 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen>
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          title: Text('Add ${type == 'income' ? 'Income' : 'Expense'} Category'),
+          title: Text(
+            'Add ${type == 'income' ? 'Income' : 'Expense'} Category',
+          ),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -62,34 +63,60 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen>
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
-                  children: [
-                    'ðŸ•', 'ðŸ›’', 'ðŸš—', 'ðŸ›ï¸', 'ðŸŽ¬', 'ðŸ’¡', 'ðŸ¥', 'ðŸ“š',
-                    'ðŸ ', '💇', '👗', 'âœˆï¸', 'ðŸ›¡ï¸', 'ðŸŽ', '📺', '💰',
-                    '💻', '📊', '📈', '🔄', 'ðŸ¦', '✨', '📌', '🎯',
-                  ].map((emoji) {
-                    final isSelected = emoji == selectedIcon;
-                    return GestureDetector(
-                      onTap: () =>
-                          setDialogState(() => selectedIcon = emoji),
-                      child: Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? AppColors.accentViolet.withValues(alpha: 0.2)
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(8),
-                          border: isSelected
-                              ? Border.all(color: AppColors.accentViolet)
-                              : null,
-                        ),
-                        child: Center(
-                          child: Text(emoji,
-                              style: const TextStyle(fontSize: 22)),
-                        ),
-                      ),
-                    );
-                  }).toList(),
+                  children:
+                      [
+                        'ðŸ\u2022',
+                        '🛒',
+                        '🚗',
+                        'ðŸ›ï¸',
+                        '🎬',
+                        '💡',
+                        'ðŸ¥',
+                        '📚',
+                        'ðŸ ',
+                        '💇',
+                        '👗',
+                        'âœˆï¸',
+                        'ðŸ›¡ï¸',
+                        'ðŸŽ',
+                        '📺',
+                        '💰',
+                        '💻',
+                        '📊',
+                        '📈',
+                        '🔄',
+                        'ðŸ¦',
+                        '✨',
+                        '📌',
+                        '🎯',
+                      ].map((emoji) {
+                        final isSelected = emoji == selectedIcon;
+                        return GestureDetector(
+                          onTap: () =>
+                              setDialogState(() => selectedIcon = emoji),
+                          child: Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? AppColors.accentViolet.withValues(
+                                      alpha: 0.2,
+                                    )
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(8),
+                              border: isSelected
+                                  ? Border.all(color: AppColors.accentViolet)
+                                  : null,
+                            ),
+                            child: Center(
+                              child: Text(
+                                emoji,
+                                style: const TextStyle(fontSize: 22),
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
                 ),
                 const SizedBox(height: 16),
                 Text('Color', style: AppTypography.labelMedium),
@@ -101,7 +128,8 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen>
                     final isSelected = color.toARGB32() == selectedColor;
                     return GestureDetector(
                       onTap: () => setDialogState(
-                          () => selectedColor = color.toARGB32()),
+                        () => selectedColor = color.toARGB32(),
+                      ),
                       child: Container(
                         width: 32,
                         height: 32,
@@ -130,12 +158,14 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen>
                 if (name.isEmpty) return;
 
                 final dao = ref.read(categoriesDaoProvider);
-                await dao.insertCategory(CategoriesCompanion(
-                  name: Value(name),
-                  type: Value(type),
-                  icon: Value(selectedIcon),
-                  color: Value(selectedColor),
-                ));
+                await dao.insertCategory(
+                  CategoriesCompanion(
+                    name: Value(name),
+                    type: Value(type),
+                    icon: Value(selectedIcon),
+                    color: Value(selectedColor),
+                  ),
+                );
                 if (ctx.mounted) Navigator.pop(ctx);
               },
               child: const Text('Add'),
@@ -163,8 +193,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen>
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          final type =
-              _tabController.index == 0 ? 'expense' : 'income';
+          final type = _tabController.index == 0 ? 'expense' : 'income';
           _showAddCategoryDialog(type);
         },
         child: const Icon(Icons.add),
@@ -212,13 +241,10 @@ class _CategoryList extends StatelessWidget {
             return Container(
               margin: const EdgeInsets.only(bottom: 4),
               child: Material(
-                color: isDark
-                    ? AppColors.darkCard
-                    : AppColors.lightCard,
+                color: isDark ? AppColors.darkCard : AppColors.lightCard,
                 borderRadius: BorderRadius.circular(14),
                 child: ListTile(
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 16),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
                   ),
@@ -226,44 +252,44 @@ class _CategoryList extends StatelessWidget {
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      color:
-                          Color(cat.color).withValues(alpha: 0.15),
+                      color: Color(cat.color).withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Center(
-                      child: Text(cat.icon,
-                          style: const TextStyle(fontSize: 20)),
+                      child: Text(
+                        cat.icon,
+                        style: const TextStyle(fontSize: 20),
+                      ),
                     ),
                   ),
-                  title: Text(cat.name,
-                      style: AppTypography.bodyMedium
-                          .copyWith(fontWeight: FontWeight.w600)),
+                  title: Text(
+                    cat.name,
+                    style: AppTypography.bodyMedium.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                   trailing: cat.isSystem
-                      ? Text('System',
-                          style: AppTypography.labelSmall)
+                      ? Text('System', style: AppTypography.labelSmall)
                       : IconButton(
-                          icon: const Icon(Icons.delete_outline,
-                              size: 20),
+                          icon: const Icon(Icons.delete_outline, size: 20),
                           onPressed: () async {
-                            final confirm =
-                                await showDialog<bool>(
+                            final confirm = await showDialog<bool>(
                               context: context,
                               builder: (ctx) => AlertDialog(
-                                title:
-                                    const Text('Delete Category?'),
+                                title: const Text('Delete Category?'),
                                 actions: [
                                   TextButton(
-                                    onPressed: () =>
-                                        Navigator.pop(ctx, false),
+                                    onPressed: () => Navigator.pop(ctx, false),
                                     child: const Text('Cancel'),
                                   ),
                                   TextButton(
-                                    onPressed: () =>
-                                        Navigator.pop(ctx, true),
-                                    child: const Text('Delete',
-                                        style: TextStyle(
-                                            color:
-                                                AppColors.expense)),
+                                    onPressed: () => Navigator.pop(ctx, true),
+                                    child: const Text(
+                                      'Delete',
+                                      style: TextStyle(
+                                        color: AppColors.expense,
+                                      ),
+                                    ),
                                   ),
                                 ],
                               ),

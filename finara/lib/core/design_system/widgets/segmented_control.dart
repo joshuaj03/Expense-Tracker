@@ -47,11 +47,15 @@ class SegmentedControl<T> extends StatelessWidget {
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 curve: Curves.easeOutCubic,
-                padding:
-                    const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 10,
+                  horizontal: 16,
+                ),
                 margin: const EdgeInsets.only(right: 4),
                 decoration: BoxDecoration(
-                  color: isSelected ? color.withValues(alpha: 0.15) : Colors.transparent,
+                  color: isSelected
+                      ? color.withValues(alpha: 0.15)
+                      : Colors.transparent,
                   borderRadius: BorderRadius.circular(10),
                   border: isSelected
                       ? Border.all(color: color.withValues(alpha: 0.3))
@@ -64,8 +68,7 @@ class SegmentedControl<T> extends StatelessWidget {
                     color: isSelected
                         ? color
                         : Theme.of(context).textTheme.bodySmall?.color,
-                    fontWeight:
-                        isSelected ? FontWeight.w700 : FontWeight.w500,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                   ),
                 ),
               ),

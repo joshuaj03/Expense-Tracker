@@ -1,64 +1,38 @@
-# Finara - Memory & Context
+# Finara Project State & Handover Summary
 
-## 1. Project Overview & Location
-**Current Path:** `C:\Coding\Expense Tracker` (Moved out of OneDrive to prevent Android Gradle lock issues).
-Finara is a Personal Finance Operating System built with Flutter for Android first. It aims to be fast, confident, and provide instant insights on money management. The benchmark app is MyMoney, but with a more modern, minimal, glassmorphic UI, and stricter analytics rules.
+## 🎯 Goal
+Building "Finara"—a personalized, offline-first Expense Tracker & Budgeting app. It is heavily inspired by the "MyMoney" Android app, but tailored with custom features (itemized transactions, advanced loan tracking, budget carry-forward, and custom account icons) specifically for the user.
 
-## 2. Architecture & Tech Stack
-- **Framework:** Flutter (Android first)
-- **Language:** Dart (null-safe)
-- **State Management & DI:** Riverpod 2.x
-- **Local Database:** Drift (SQLite) with reactive streams.
-- **Navigation:** `go_router`
-- **Architecture Pattern:** Clean Architecture + MVVM, feature-based modularity.
-  - `core/` (database, design_system, navigation, utils)
-  - `features/` (accounts, analytics, backup, budgets, categories, dashboard, search, settings, transactions)
-- **Offline First:** Drift is the single source of truth.
+## ✅ What We've Completed
+- **Core Architecture:** Established the project using Flutter, Riverpod, Drift (SQLite), and GoRouter.
+- **Native `.mbak` Import:** Successfully reversed the MyMoney `.mbak` encryption. Implemented a native Dart decryption and import flow using PBKDF2 with AES-CBC.
+- **Phase A (Core UX & Tracking):**
+  - Navigation restructure.
+  - Transaction entry overhaul (custom numpad, category/account picker bottom sheets).
+  - **Itemized Lists vs. Notes:** Built logic to save multi-item transactions and text notes separately, stored seamlessly in Drift via JSON.
+  - **Records Tab Revamp:** Implemented complex timeframe toggles (Daily, Weekly, Monthly 1/3/6, Yearly) with nested summaries.
+  - Summary and Transaction Detail popups with UI wrapping/overflow protections.
+  - Budget persistence, remaining amounts, and tip displays.
+  - Category and account editing improvements.
 
-## 3. Database Schema (Drift)
-- **Accounts:** ID, name, type (cash, bank, upi, wallet, creditCard, investment), icon, color, initial/current balances, currency.
-- **Categories:** ID, name, type (income, expense), icon, color, parent ID, isSystem.
-- **Transactions:** ID, type (income, expense, transfer), account ID, to-account ID, category ID, amount, date, note, tags, isExcludedFromAnalytics.
-- **Budgets:** ID, category ID, month, year, limitAmount, rollover.
+## 📍 Current Exact State
+We just successfully finished building out and debugging the **Transactions & Records Module**. The UI gracefully handles long account names, explicitly separates itemized lines from the raw text notes in the database, and provides analytical summaries per timeframe.
 
-## 4. Work Accomplished (Phase 0 & Phase 1 MVP)
-*All tasks below have been fully implemented:*
-- **Phase 0 (Foundation):** Flutter project scaffold, Drift database layer, Design system (theme, core widgets like `GlassCard`, `NumericKeypad`), Navigation shell (`go_router`), Utils (currency/date formatting).
-- **Phase 1 (MVP Features):** Dashboard, Fast Transaction Entry, Accounts, Categories, Analytics (strict transfer exclusion), Budgets, Search, Settings, Backup export.
+We are now ready to tackle Phase B!
 
-## 5. Finara v0.2 - Current Plan (From Implementation Plan & Task Tracker)
-Based on the comprehensive v0.2 requirements, the next set of features is grouped into 4 phases:
+## 🚀 Pending Tasks (Up Next)
+**Phase B: Advanced Financial Tracking**
+1. **B1: Credit Card Management** 
+   - Tracking billing cycles, grace periods, statement generation, and due dates.
+2. **B2: Loan Management**
+   - Summarizing total interest paid, remaining principal, and an algorithm estimating payoff time based on historical payments.
+3. **Advanced Analytics**
+   - Deeper category insights / recommendations.
+4. **Data Sync & Backup**
+   - CSV / Google Drive Sync.
 
-**Phase A: Core UX Fixes & Database Migration**
-- [ ] Drift schema migration (v2) for Credit Cards (limit, billing), Loans (principal, interest), and Split Payments.
-- [ ] Navigation restructure (5-tab bottom nav + drawer)
-- [ ] Transaction entry overhaul (dropdowns, itemized notes, split support)
-- [ ] Record editing & viewing
-
-**Phase B: Financial Features**
-- [ ] Credit card management (limit, billing, reminders)
-- [ ] Loan management (tracking principal vs interest)
-- [ ] Budget persistence (effective date ranges rather than static month)
-
-**Phase C: Data & Sync**
-- [ ] CSV backup/restore (matching `export_22_07_26_832.csv` format)
-- [ ] **Google Drive Backup Architecture:** 
-  - Local-first design (SQLite remains primary).
-  - Uses Google Sign-In and Google Drive API (`appDataFolder`).
-  - Safe snapshotting, compression, and encryption of the `.sqlite` file.
-  - No centralized developer backend. User-owned encrypted backup.
-  - Clean architecture separation: `GoogleAuthService`, `GoogleDriveService`, `DatabaseBackupService`, `BackupEncryptionService`.
-
-**Phase D: Polish**
-- [ ] Final build & test
-
-## 6. Open Questions & Blockers (Status Updates)
-1. **OneDrive + Gradle Conflict:** *Resolved.* Project moved to `C:\Coding\Expense Tracker`.
-2. **Sample CSV / Backup:** *Resolved.* The CSV has been analyzed for import.
-3. **Google Cloud credentials:** *Pending user action.* Google Sign-In configuration (OAuth Client IDs) will be needed for Phase C.
-4. **Loan types & Split payments:** *Resolved.* Explicit data models provided.
-5. **Budgets History:** *Resolved.* We will use an `effectiveFromMonth` and `effectiveToMonth` range.
-
-## 7. Next Steps & Action Plan
-- **Current Status:** Waiting for the user to review and approve the **Implementation Plan**.
-- Once approved, begin executing **Phase A: Database & Core Models Migration** (schemaVersion 2) inside the new project directory.
+## ⚠️ Key Technical Decisions & Constraints
+- **APK Naming Scheme:** User prefers final APKs to be placed in `C:\Coding\Expense Tracker\app` following the format `Finara_vx.xx_build_prod.apk` (or `beta`).
+- **Offline First:** All data is stored via Drift SQLite locally.
+- **Logging Strategy:** The user prefers on-device testing. We rely on the in-app **Talker UI** for debugging rather than tethered `adb logcat`.
+- **UI Constraints:** Avoid overflow errors by using `Flexible`/`Expanded` with `maxLines: 2` and `TextOverflow.ellipsis` on long data fields like account names.
