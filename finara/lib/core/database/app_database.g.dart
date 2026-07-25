@@ -1639,6 +1639,59 @@ class $TransactionsTable extends Transactions
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _settledAmountMeta = const VerificationMeta(
+    'settledAmount',
+  );
+  @override
+  late final GeneratedColumn<double> settledAmount = GeneratedColumn<double>(
+    'settled_amount',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0.0),
+  );
+  static const VerificationMeta _isFullySettledMeta = const VerificationMeta(
+    'isFullySettled',
+  );
+  @override
+  late final GeneratedColumn<bool> isFullySettled = GeneratedColumn<bool>(
+    'is_fully_settled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_fully_settled" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _isDebtMeta = const VerificationMeta('isDebt');
+  @override
+  late final GeneratedColumn<bool> isDebt = GeneratedColumn<bool>(
+    'is_debt',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_debt" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _settlementForTxnIdMeta =
+      const VerificationMeta('settlementForTxnId');
+  @override
+  late final GeneratedColumn<int> settlementForTxnId = GeneratedColumn<int>(
+    'settlement_for_txn_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES transactions (id)',
+    ),
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -1680,6 +1733,10 @@ class $TransactionsTable extends Transactions
     splitPeople,
     userShareAmount,
     itemizedListJson,
+    settledAmount,
+    isFullySettled,
+    isDebt,
+    settlementForTxnId,
     createdAt,
     updatedAt,
   ];
@@ -1805,6 +1862,39 @@ class $TransactionsTable extends Transactions
         ),
       );
     }
+    if (data.containsKey('settled_amount')) {
+      context.handle(
+        _settledAmountMeta,
+        settledAmount.isAcceptableOrUnknown(
+          data['settled_amount']!,
+          _settledAmountMeta,
+        ),
+      );
+    }
+    if (data.containsKey('is_fully_settled')) {
+      context.handle(
+        _isFullySettledMeta,
+        isFullySettled.isAcceptableOrUnknown(
+          data['is_fully_settled']!,
+          _isFullySettledMeta,
+        ),
+      );
+    }
+    if (data.containsKey('is_debt')) {
+      context.handle(
+        _isDebtMeta,
+        isDebt.isAcceptableOrUnknown(data['is_debt']!, _isDebtMeta),
+      );
+    }
+    if (data.containsKey('settlement_for_txn_id')) {
+      context.handle(
+        _settlementForTxnIdMeta,
+        settlementForTxnId.isAcceptableOrUnknown(
+          data['settlement_for_txn_id']!,
+          _settlementForTxnIdMeta,
+        ),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -1886,6 +1976,22 @@ class $TransactionsTable extends Transactions
         DriftSqlType.string,
         data['${effectivePrefix}itemized_list_json'],
       ),
+      settledAmount: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}settled_amount'],
+      )!,
+      isFullySettled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_fully_settled'],
+      )!,
+      isDebt: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_debt'],
+      )!,
+      settlementForTxnId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}settlement_for_txn_id'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -1919,6 +2025,10 @@ class Transaction extends DataClass implements Insertable<Transaction> {
   final int? splitPeople;
   final double? userShareAmount;
   final String? itemizedListJson;
+  final double settledAmount;
+  final bool isFullySettled;
+  final bool isDebt;
+  final int? settlementForTxnId;
   final DateTime createdAt;
   final DateTime updatedAt;
   const Transaction({
@@ -1937,6 +2047,10 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     this.splitPeople,
     this.userShareAmount,
     this.itemizedListJson,
+    required this.settledAmount,
+    required this.isFullySettled,
+    required this.isDebt,
+    this.settlementForTxnId,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -1967,6 +2081,12 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     }
     if (!nullToAbsent || itemizedListJson != null) {
       map['itemized_list_json'] = Variable<String>(itemizedListJson);
+    }
+    map['settled_amount'] = Variable<double>(settledAmount);
+    map['is_fully_settled'] = Variable<bool>(isFullySettled);
+    map['is_debt'] = Variable<bool>(isDebt);
+    if (!nullToAbsent || settlementForTxnId != null) {
+      map['settlement_for_txn_id'] = Variable<int>(settlementForTxnId);
     }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
@@ -2000,6 +2120,12 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       itemizedListJson: itemizedListJson == null && nullToAbsent
           ? const Value.absent()
           : Value(itemizedListJson),
+      settledAmount: Value(settledAmount),
+      isFullySettled: Value(isFullySettled),
+      isDebt: Value(isDebt),
+      settlementForTxnId: settlementForTxnId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(settlementForTxnId),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -2028,6 +2154,10 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       splitPeople: serializer.fromJson<int?>(json['splitPeople']),
       userShareAmount: serializer.fromJson<double?>(json['userShareAmount']),
       itemizedListJson: serializer.fromJson<String?>(json['itemizedListJson']),
+      settledAmount: serializer.fromJson<double>(json['settledAmount']),
+      isFullySettled: serializer.fromJson<bool>(json['isFullySettled']),
+      isDebt: serializer.fromJson<bool>(json['isDebt']),
+      settlementForTxnId: serializer.fromJson<int?>(json['settlementForTxnId']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -2053,6 +2183,10 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       'splitPeople': serializer.toJson<int?>(splitPeople),
       'userShareAmount': serializer.toJson<double?>(userShareAmount),
       'itemizedListJson': serializer.toJson<String?>(itemizedListJson),
+      'settledAmount': serializer.toJson<double>(settledAmount),
+      'isFullySettled': serializer.toJson<bool>(isFullySettled),
+      'isDebt': serializer.toJson<bool>(isDebt),
+      'settlementForTxnId': serializer.toJson<int?>(settlementForTxnId),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -2074,6 +2208,10 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     Value<int?> splitPeople = const Value.absent(),
     Value<double?> userShareAmount = const Value.absent(),
     Value<String?> itemizedListJson = const Value.absent(),
+    double? settledAmount,
+    bool? isFullySettled,
+    bool? isDebt,
+    Value<int?> settlementForTxnId = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => Transaction(
@@ -2097,6 +2235,12 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     itemizedListJson: itemizedListJson.present
         ? itemizedListJson.value
         : this.itemizedListJson,
+    settledAmount: settledAmount ?? this.settledAmount,
+    isFullySettled: isFullySettled ?? this.isFullySettled,
+    isDebt: isDebt ?? this.isDebt,
+    settlementForTxnId: settlementForTxnId.present
+        ? settlementForTxnId.value
+        : this.settlementForTxnId,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -2129,6 +2273,16 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       itemizedListJson: data.itemizedListJson.present
           ? data.itemizedListJson.value
           : this.itemizedListJson,
+      settledAmount: data.settledAmount.present
+          ? data.settledAmount.value
+          : this.settledAmount,
+      isFullySettled: data.isFullySettled.present
+          ? data.isFullySettled.value
+          : this.isFullySettled,
+      isDebt: data.isDebt.present ? data.isDebt.value : this.isDebt,
+      settlementForTxnId: data.settlementForTxnId.present
+          ? data.settlementForTxnId.value
+          : this.settlementForTxnId,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -2152,6 +2306,10 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           ..write('splitPeople: $splitPeople, ')
           ..write('userShareAmount: $userShareAmount, ')
           ..write('itemizedListJson: $itemizedListJson, ')
+          ..write('settledAmount: $settledAmount, ')
+          ..write('isFullySettled: $isFullySettled, ')
+          ..write('isDebt: $isDebt, ')
+          ..write('settlementForTxnId: $settlementForTxnId, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -2159,7 +2317,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     id,
     type,
     accountId,
@@ -2175,9 +2333,13 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     splitPeople,
     userShareAmount,
     itemizedListJson,
+    settledAmount,
+    isFullySettled,
+    isDebt,
+    settlementForTxnId,
     createdAt,
     updatedAt,
-  );
+  ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -2197,6 +2359,10 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           other.splitPeople == this.splitPeople &&
           other.userShareAmount == this.userShareAmount &&
           other.itemizedListJson == this.itemizedListJson &&
+          other.settledAmount == this.settledAmount &&
+          other.isFullySettled == this.isFullySettled &&
+          other.isDebt == this.isDebt &&
+          other.settlementForTxnId == this.settlementForTxnId &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -2217,6 +2383,10 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
   final Value<int?> splitPeople;
   final Value<double?> userShareAmount;
   final Value<String?> itemizedListJson;
+  final Value<double> settledAmount;
+  final Value<bool> isFullySettled;
+  final Value<bool> isDebt;
+  final Value<int?> settlementForTxnId;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   const TransactionsCompanion({
@@ -2235,6 +2405,10 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     this.splitPeople = const Value.absent(),
     this.userShareAmount = const Value.absent(),
     this.itemizedListJson = const Value.absent(),
+    this.settledAmount = const Value.absent(),
+    this.isFullySettled = const Value.absent(),
+    this.isDebt = const Value.absent(),
+    this.settlementForTxnId = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   });
@@ -2254,6 +2428,10 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     this.splitPeople = const Value.absent(),
     this.userShareAmount = const Value.absent(),
     this.itemizedListJson = const Value.absent(),
+    this.settledAmount = const Value.absent(),
+    this.isFullySettled = const Value.absent(),
+    this.isDebt = const Value.absent(),
+    this.settlementForTxnId = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   }) : type = Value(type),
@@ -2276,6 +2454,10 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     Expression<int>? splitPeople,
     Expression<double>? userShareAmount,
     Expression<String>? itemizedListJson,
+    Expression<double>? settledAmount,
+    Expression<bool>? isFullySettled,
+    Expression<bool>? isDebt,
+    Expression<int>? settlementForTxnId,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
   }) {
@@ -2296,6 +2478,11 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       if (splitPeople != null) 'split_people': splitPeople,
       if (userShareAmount != null) 'user_share_amount': userShareAmount,
       if (itemizedListJson != null) 'itemized_list_json': itemizedListJson,
+      if (settledAmount != null) 'settled_amount': settledAmount,
+      if (isFullySettled != null) 'is_fully_settled': isFullySettled,
+      if (isDebt != null) 'is_debt': isDebt,
+      if (settlementForTxnId != null)
+        'settlement_for_txn_id': settlementForTxnId,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
@@ -2317,6 +2504,10 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     Value<int?>? splitPeople,
     Value<double?>? userShareAmount,
     Value<String?>? itemizedListJson,
+    Value<double>? settledAmount,
+    Value<bool>? isFullySettled,
+    Value<bool>? isDebt,
+    Value<int?>? settlementForTxnId,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
   }) {
@@ -2337,6 +2528,10 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       splitPeople: splitPeople ?? this.splitPeople,
       userShareAmount: userShareAmount ?? this.userShareAmount,
       itemizedListJson: itemizedListJson ?? this.itemizedListJson,
+      settledAmount: settledAmount ?? this.settledAmount,
+      isFullySettled: isFullySettled ?? this.isFullySettled,
+      isDebt: isDebt ?? this.isDebt,
+      settlementForTxnId: settlementForTxnId ?? this.settlementForTxnId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -2392,6 +2587,18 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     if (itemizedListJson.present) {
       map['itemized_list_json'] = Variable<String>(itemizedListJson.value);
     }
+    if (settledAmount.present) {
+      map['settled_amount'] = Variable<double>(settledAmount.value);
+    }
+    if (isFullySettled.present) {
+      map['is_fully_settled'] = Variable<bool>(isFullySettled.value);
+    }
+    if (isDebt.present) {
+      map['is_debt'] = Variable<bool>(isDebt.value);
+    }
+    if (settlementForTxnId.present) {
+      map['settlement_for_txn_id'] = Variable<int>(settlementForTxnId.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -2419,6 +2626,10 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
           ..write('splitPeople: $splitPeople, ')
           ..write('userShareAmount: $userShareAmount, ')
           ..write('itemizedListJson: $itemizedListJson, ')
+          ..write('settledAmount: $settledAmount, ')
+          ..write('isFullySettled: $isFullySettled, ')
+          ..write('isDebt: $isDebt, ')
+          ..write('settlementForTxnId: $settlementForTxnId, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -4737,6 +4948,10 @@ typedef $$TransactionsTableCreateCompanionBuilder =
       Value<int?> splitPeople,
       Value<double?> userShareAmount,
       Value<String?> itemizedListJson,
+      Value<double> settledAmount,
+      Value<bool> isFullySettled,
+      Value<bool> isDebt,
+      Value<int?> settlementForTxnId,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
     });
@@ -4757,6 +4972,10 @@ typedef $$TransactionsTableUpdateCompanionBuilder =
       Value<int?> splitPeople,
       Value<double?> userShareAmount,
       Value<String?> itemizedListJson,
+      Value<double> settledAmount,
+      Value<bool> isFullySettled,
+      Value<bool> isDebt,
+      Value<int?> settlementForTxnId,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
     });
@@ -4816,6 +5035,28 @@ final class $$TransactionsTableReferences
       $_db.categories,
     ).filter((f) => f.id.sqlEquals($_column));
     final item = $_typedResult.readTableOrNull(_categoryIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $TransactionsTable _settlementForTxnIdTable(_$AppDatabase db) =>
+      db.transactions.createAlias(
+        $_aliasNameGenerator(
+          db.transactions.settlementForTxnId,
+          db.transactions.id,
+        ),
+      );
+
+  $$TransactionsTableProcessedTableManager? get settlementForTxnId {
+    final $_column = $_itemColumn<int>('settlement_for_txn_id');
+    if ($_column == null) return null;
+    final manager = $$TransactionsTableTableManager(
+      $_db,
+      $_db.transactions,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_settlementForTxnIdTable($_db));
     if (item == null) return manager;
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: [item]),
@@ -4889,6 +5130,21 @@ class $$TransactionsTableFilterComposer
 
   ColumnFilters<String> get itemizedListJson => $composableBuilder(
     column: $table.itemizedListJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get settledAmount => $composableBuilder(
+    column: $table.settledAmount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isFullySettled => $composableBuilder(
+    column: $table.isFullySettled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isDebt => $composableBuilder(
+    column: $table.isDebt,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4970,6 +5226,29 @@ class $$TransactionsTableFilterComposer
     );
     return composer;
   }
+
+  $$TransactionsTableFilterComposer get settlementForTxnId {
+    final $$TransactionsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.settlementForTxnId,
+      referencedTable: $db.transactions,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TransactionsTableFilterComposer(
+            $db: $db,
+            $table: $db.transactions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 }
 
 class $$TransactionsTableOrderingComposer
@@ -5038,6 +5317,21 @@ class $$TransactionsTableOrderingComposer
 
   ColumnOrderings<String> get itemizedListJson => $composableBuilder(
     column: $table.itemizedListJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get settledAmount => $composableBuilder(
+    column: $table.settledAmount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isFullySettled => $composableBuilder(
+    column: $table.isFullySettled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isDebt => $composableBuilder(
+    column: $table.isDebt,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -5119,6 +5413,29 @@ class $$TransactionsTableOrderingComposer
     );
     return composer;
   }
+
+  $$TransactionsTableOrderingComposer get settlementForTxnId {
+    final $$TransactionsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.settlementForTxnId,
+      referencedTable: $db.transactions,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TransactionsTableOrderingComposer(
+            $db: $db,
+            $table: $db.transactions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 }
 
 class $$TransactionsTableAnnotationComposer
@@ -5173,6 +5490,19 @@ class $$TransactionsTableAnnotationComposer
     column: $table.itemizedListJson,
     builder: (column) => column,
   );
+
+  GeneratedColumn<double> get settledAmount => $composableBuilder(
+    column: $table.settledAmount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isFullySettled => $composableBuilder(
+    column: $table.isFullySettled,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isDebt =>
+      $composableBuilder(column: $table.isDebt, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -5248,6 +5578,29 @@ class $$TransactionsTableAnnotationComposer
     );
     return composer;
   }
+
+  $$TransactionsTableAnnotationComposer get settlementForTxnId {
+    final $$TransactionsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.settlementForTxnId,
+      referencedTable: $db.transactions,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TransactionsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.transactions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 }
 
 class $$TransactionsTableTableManager
@@ -5267,6 +5620,7 @@ class $$TransactionsTableTableManager
             bool accountId,
             bool toAccountId,
             bool categoryId,
+            bool settlementForTxnId,
           })
         > {
   $$TransactionsTableTableManager(_$AppDatabase db, $TransactionsTable table)
@@ -5297,6 +5651,10 @@ class $$TransactionsTableTableManager
                 Value<int?> splitPeople = const Value.absent(),
                 Value<double?> userShareAmount = const Value.absent(),
                 Value<String?> itemizedListJson = const Value.absent(),
+                Value<double> settledAmount = const Value.absent(),
+                Value<bool> isFullySettled = const Value.absent(),
+                Value<bool> isDebt = const Value.absent(),
+                Value<int?> settlementForTxnId = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => TransactionsCompanion(
@@ -5315,6 +5673,10 @@ class $$TransactionsTableTableManager
                 splitPeople: splitPeople,
                 userShareAmount: userShareAmount,
                 itemizedListJson: itemizedListJson,
+                settledAmount: settledAmount,
+                isFullySettled: isFullySettled,
+                isDebt: isDebt,
+                settlementForTxnId: settlementForTxnId,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),
@@ -5335,6 +5697,10 @@ class $$TransactionsTableTableManager
                 Value<int?> splitPeople = const Value.absent(),
                 Value<double?> userShareAmount = const Value.absent(),
                 Value<String?> itemizedListJson = const Value.absent(),
+                Value<double> settledAmount = const Value.absent(),
+                Value<bool> isFullySettled = const Value.absent(),
+                Value<bool> isDebt = const Value.absent(),
+                Value<int?> settlementForTxnId = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => TransactionsCompanion.insert(
@@ -5353,6 +5719,10 @@ class $$TransactionsTableTableManager
                 splitPeople: splitPeople,
                 userShareAmount: userShareAmount,
                 itemizedListJson: itemizedListJson,
+                settledAmount: settledAmount,
+                isFullySettled: isFullySettled,
+                isDebt: isDebt,
+                settlementForTxnId: settlementForTxnId,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),
@@ -5365,7 +5735,12 @@ class $$TransactionsTableTableManager
               )
               .toList(),
           prefetchHooksCallback:
-              ({accountId = false, toAccountId = false, categoryId = false}) {
+              ({
+                accountId = false,
+                toAccountId = false,
+                categoryId = false,
+                settlementForTxnId = false,
+              }) {
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [],
@@ -5430,6 +5805,21 @@ class $$TransactionsTableTableManager
                                   )
                                   as T;
                         }
+                        if (settlementForTxnId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.settlementForTxnId,
+                                    referencedTable:
+                                        $$TransactionsTableReferences
+                                            ._settlementForTxnIdTable(db),
+                                    referencedColumn:
+                                        $$TransactionsTableReferences
+                                            ._settlementForTxnIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
 
                         return state;
                       },
@@ -5458,6 +5848,7 @@ typedef $$TransactionsTableProcessedTableManager =
         bool accountId,
         bool toAccountId,
         bool categoryId,
+        bool settlementForTxnId,
       })
     >;
 typedef $$BudgetsTableCreateCompanionBuilder =

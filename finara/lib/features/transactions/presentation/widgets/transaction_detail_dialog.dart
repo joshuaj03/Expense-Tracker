@@ -23,10 +23,12 @@ class TransactionDetailDialog extends ConsumerWidget {
     final isTransfer = t.type == 'transfer';
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final icon = isTransfer ? '🔄' : (txn.categoryIcon ?? '📌');
+    final isSettle = t.type == 'settle';
+
+    final icon = isTransfer ? '🔄' : (isSettle ? '✅' : (txn.categoryIcon ?? '📌'));
     final title = isTransfer
         ? '${txn.accountName} → ${txn.toAccountName ?? '?'}'
-        : (txn.categoryName ?? 'Uncategorized');
+        : (isSettle ? 'Settle' : (txn.categoryName ?? 'Uncategorized'));
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -146,6 +148,25 @@ class TransactionDetailDialog extends ConsumerWidget {
               '${DateFormatter.full(t.date)} at ${DateFormatter.time(t.date)}',
               style: AppTypography.bodySmall,
             ),
+            if (t.type == 'transfer' && (t.isSplit || t.isDebt)) ...[
+              const SizedBox(height: 4),
+              Text(
+                'Debt • ${t.isSplit ? 'Lend' : 'Borrow'}',
+                style: AppTypography.bodySmall.copyWith(
+                  color: t.isSplit ? AppColors.income : AppColors.expense,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ] else if (t.type == 'settle') ...[
+              const SizedBox(height: 4),
+              Text(
+                'Debt Payment • ${!t.isDebt ? 'Recover' : 'Pay Back'}',
+                style: AppTypography.bodySmall.copyWith(
+                  color: !t.isDebt ? AppColors.income : AppColors.expense,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
 
             const SizedBox(height: 20),
             Container(

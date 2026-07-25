@@ -17,12 +17,14 @@ import '../../../../core/design_system/widgets/segmented_control.dart';
 import 'package:finara/features/categories/data/categories_provider.dart';
 import 'package:finara/features/accounts/data/accounts_provider.dart';
 import 'package:finara/features/transactions/data/transactions_provider.dart';
+import 'package:finara/features/transactions/data/transactions_dao.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../widgets/category_picker_sheet.dart';
 import '../widgets/account_picker_sheet.dart';
 import '../widgets/itemized_notes.dart';
 import '../../../../core/utils/logger.dart';
 import 'package:finara/features/settings/data/ui_preferences_provider.dart';
+import '../widgets/transaction_detail_dialog.dart';
 import 'package:intl/intl.dart';
 
 class AddTransactionScreen extends ConsumerStatefulWidget {
@@ -68,6 +70,11 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   DateTime _billingMonth = DateTime.now();
   bool _isLoanInterest = false;
   bool _includePrincipalInAnalytics = false;
+  bool _isLendBorrow = false;
+  int _transferDebtType = 0; // 0 = Lend, 1 = Borrow
+  bool _isSettleIncome = true;
+  List<Transaction> _pendingRecoveries = [];
+  Map<int, double> _settlementAllocations = {};
 
   bool get _isEditing => widget.editTransactionId != null;
 
@@ -86,10 +93,13 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
 
     final accounts = await accountsDao.getAllAccounts();
     final categories = await categoriesDao.getAllCategories();
+    final transactionsDao = ref.read(transactionsDaoProvider);
+    final pendingRecoveries = await transactionsDao.getPendingRecoveries();
 
     setState(() {
       _accounts = accounts;
       _categories = categories;
+      _pendingRecoveries = pendingRecoveries;
       if (accounts.isNotEmpty) {
         _selectedAccount = accounts.first;
       }
@@ -139,7 +149,21 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                 .where((c) => c.id == txn.categoryId)
                 .firstOrNull;
           }
-
+          if (_type == TransactionType.transfer) {
+            if (txn.isSplit) {
+              _isLendBorrow = true;
+              _transferDebtType = 0; // Lending
+            } else if (txn.isDebt) {
+              _isLendBorrow = true;
+              _transferDebtType = 1; // Borrowing
+            }
+          } else {
+            _isLendBorrow = txn.isDebt;
+            if (txn.isSplit) {
+              _isSplit = true;
+              _splitPeople = txn.splitPeople ?? 2;
+            }
+          }
           if (txn.itemizedListJson != null &&
               txn.itemizedListJson!.isNotEmpty) {
             try {
@@ -170,8 +194,10 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
 
   Future<void> _saveTransaction() async {
     final log = AppLogger.instance;
-    final amount = _effectiveAmount;
-    if (amount <= 0) {
+    final userShare = _effectiveAmount;
+    final globalAmount = double.tryParse(_amount) ?? 0.0;
+    
+    if (globalAmount <= 0) {
       log.ui('Save failed: invalid amount');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter a valid amount')),
@@ -187,7 +213,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       return;
     }
 
-    if (_type != TransactionType.transfer && _selectedCategory == null) {
+    if (_type != TransactionType.transfer && _type != TransactionType.settle && _selectedCategory == null) {
       log.ui('Save failed: missing category');
       ScaffoldMessenger.of(
         context,
@@ -209,6 +235,53 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         .where((e) => e.item.trim().isNotEmpty)
         .toList();
 
+    // Check for itemized vs global amount discrepancy
+    if (validItems.isNotEmpty) {
+      final itemSum = validItems.fold<double>(0, (sum, e) => sum + e.total);
+      if ((globalAmount - itemSum).abs() > 0.01) {
+        final proceed = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Amount Mismatch'),
+            content: Text(
+              'The total amount (\u20B9${globalAmount.toStringAsFixed(2)}) does not match the sum of your itemized list (\u20B9${itemSum.toStringAsFixed(2)}).\n\nPlease check and correct, or proceed to auto-add the discrepancy to the list.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Check and Correct'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Proceed as it is'),
+              ),
+            ],
+          ),
+        );
+
+        if (proceed != true) {
+          return;
+        } else {
+          // Add discrepancy entry
+          final difference = globalAmount - itemSum;
+          setState(() {
+            _itemEntries.add(ItemEntry(
+              item: difference > 0 ? 'Unaccounted amount' : 'Over-accounted amount',
+              qty: 1,
+              price: difference,
+            ));
+          });
+          // Append to note text to let user know
+          notes += '\nUnaccounted amount: \u20B9${difference.toStringAsFixed(2)}';
+
+          
+          // Re-evaluate validItems
+          validItems.clear();
+          validItems.addAll(_itemEntries.where((e) => e.item.trim().isNotEmpty));
+        }
+      }
+    }
+
     // Itemized info JSON
     String? itemizedInfo;
     if (validItems.isNotEmpty) {
@@ -218,10 +291,6 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
             .toList(),
       );
     }
-
-    // Split info calculation
-    double userShare = _effectiveAmount;
-
     final dao = ref.read(transactionsDaoProvider);
 
     TransactionType finalType = _type;
@@ -243,31 +312,72 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       }
     }
 
-    final companion = TransactionsCompanion(
+    if (_type == TransactionType.settle && _settlementAllocations.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please select at least one pending record to settle')),
+        );
+      }
+      return;
+    }
+
+    final companionTemplate = TransactionsCompanion(
       type: Value(finalType.name),
       accountId: Value(_selectedAccount!.id),
       toAccountId: (_type == TransactionType.transfer)
           ? Value(_selectedToAccount?.id)
           : const Value(null),
-      categoryId: (_type != TransactionType.transfer)
+      categoryId: (_type != TransactionType.transfer && _type != TransactionType.settle)
           ? Value(_selectedCategory?.id)
           : const Value(null),
-      amount: Value(amount),
+      amount: Value(globalAmount),
       date: Value(_date),
       note: Value(notes),
       isExcludedFromAnalytics: Value(excludeFromAnalytics),
-      isSplit: Value(_isSplit),
+      isSplit: Value(_type == TransactionType.transfer && _isLendBorrow ? (_transferDebtType == 0) : _isSplit),
+      isDebt: Value(_type == TransactionType.transfer ? (_isLendBorrow && _transferDebtType == 1) : (_type == TransactionType.settle ? !_isSettleIncome : false)),
       splitPeople: Value(_isSplit ? _splitPeople : null),
       userShareAmount: Value(_isSplit ? userShare : null),
       itemizedListJson: Value(itemizedInfo),
     );
 
-    if (_isEditing) {
-      await dao.updateTransaction(widget.editTransactionId!, companion);
-      log.ui('Saved edits to transaction id=${widget.editTransactionId}');
+    if (_type == TransactionType.settle) {
+      for (final entry in _settlementAllocations.entries) {
+        final settleCompanion = companionTemplate.copyWith(
+          amount: Value(entry.value),
+          settlementForTxnId: Value(entry.key),
+          // We need to store if this settle transaction is an income or expense so we adjust balance correctly
+          // We can use the 'type' field as income/expense to make balances work seamlessly, 
+          // or we can use 'settle' and handle it in DAO.
+          // DAO logic says: if (type == 'transfer' || type == 'settle') it subtracts... wait.
+          // Let's modify DAO later, for now just pass type as settle.
+        );
+        await dao.insertTransactionWithBalance(settleCompanion);
+        
+        // Update the original transaction's settledAmount
+        final originalTxn = await dao.getTransactionById(entry.key);
+        if (originalTxn != null) {
+          final newSettledAmount = originalTxn.settledAmount + entry.value;
+          final originalAmount = (originalTxn.isSplit && originalTxn.type != 'transfer') ? (originalTxn.amount - (originalTxn.userShareAmount ?? originalTxn.amount)) : originalTxn.amount;
+          final isFullySettled = newSettledAmount >= originalAmount;
+          await dao.updateTransaction(
+            entry.key, 
+            TransactionsCompanion(
+              settledAmount: Value(newSettledAmount),
+              isFullySettled: Value(isFullySettled),
+            ),
+          );
+        }
+      }
+      log.ui('Saved settlement transactions');
     } else {
-      await dao.insertTransactionWithBalance(companion);
-      log.ui('Saved new transaction');
+      if (_isEditing) {
+        await dao.updateTransaction(widget.editTransactionId!, companionTemplate);
+        log.ui('Saved edits to transaction id=${widget.editTransactionId}');
+      } else {
+        await dao.insertTransactionWithBalance(companionTemplate);
+        log.ui('Saved new transaction');
+      }
     }
 
     // Mark credit card bill as paid
@@ -343,6 +453,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isSideBySide = ref.watch(sideBySideTransactionUINotifierProvider);
+    final enableSplitSettle = ref.watch(enableSplitAndSettleNotifierProvider);
 
     return Scaffold(
       resizeToAvoidBottomInset: false,
@@ -386,10 +497,11 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                   // Transaction type selector
                   Center(
                     child: SegmentedControl<TransactionType>(
-                      segments: const [
+                      segments: [
                         TransactionType.income,
                         TransactionType.expense,
                         TransactionType.transfer,
+                        if (enableSplitSettle) TransactionType.settle,
                       ],
                       selected: _type,
                       labelBuilder: (t) => t.displayName.toUpperCase(),
@@ -397,6 +509,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                         TransactionType.income => AppColors.income,
                         TransactionType.expense => AppColors.expense,
                         TransactionType.transfer => AppColors.transfer,
+                        TransactionType.settle => AppColors.accentViolet,
                         _ => AppColors.transfer,
                       },
                       onChanged: (t) => setState(() {
@@ -427,6 +540,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                                   AppColors.transfer,
                                 TransactionType.loanInterest =>
                                   AppColors.expense,
+                                TransactionType.settle => AppColors.accentViolet,
                               },
                             ),
                           ),
@@ -470,7 +584,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                               isCompact: true,
                             ),
                           )
-                        else
+                        else if (_type != TransactionType.settle)
                           Expanded(
                             child: _PickerTile(
                               label: 'Category',
@@ -502,7 +616,8 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                       ),
                     ],
 
-                    if (_type != TransactionType.transfer) ...[
+                    if (_type != TransactionType.transfer &&
+                        _type != TransactionType.settle) ...[
                       const SizedBox(height: 8),
                       _PickerTile(
                         label: 'Category',
@@ -601,6 +716,54 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                         ),
                       ),
                     ],
+                    if (enableSplitSettle) ...[
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? AppColors.darkCard
+                              : AppColors.lightCard,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              CheckboxListTile(
+                                title: Text(
+                                  'Record this as a debt/loan?',
+                                  style: AppTypography.bodyMedium,
+                                ),
+                                value: _isLendBorrow,
+                                onChanged: (v) => setState(
+                                  () => _isLendBorrow = v ?? false,
+                                ),
+                                contentPadding: EdgeInsets.zero,
+                                controlAffinity: ListTileControlAffinity.leading,
+                                activeColor: AppColors.accentViolet,
+                              ),
+                              if (_isLendBorrow)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 8.0, bottom: 8.0),
+                                  child: SegmentedControl<int>(
+                                    segments: const [0, 1],
+                                    selected: _transferDebtType,
+                                    labelBuilder: (v) => v == 0 ? 'I am Lending' : 'I am Borrowing',
+                                    onChanged: (index) {
+                                      setState(() {
+                                        _transferDebtType = index;
+                                      });
+                                    },
+                                  ),
+                                ),
+                            ],
+                          ),
+                      ),
+                    ],
+
                     if (_selectedToAccount?.type == AccountType.loan.name) ...[
                       const SizedBox(height: 12),
                       Container(
@@ -659,6 +822,131 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                       ),
                     ],
                   ],
+                  if (_type == TransactionType.settle) ...[
+                    const SizedBox(height: 16),
+                    Center(
+                      child: SegmentedControl<bool>(
+                        segments: const [true, false],
+                        selected: _isSettleIncome,
+                        labelBuilder: (isIncome) =>
+                            isIncome ? 'Recover' : 'Pay Back',
+                        colorBuilder: (isIncome) =>
+                            isIncome ? AppColors.income : AppColors.expense,
+                        onChanged: (v) => setState(() {
+                          _isSettleIncome = v;
+                          _settlementAllocations.clear();
+                          _amount = '';
+                        }),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text('Pending Records', style: AppTypography.labelLarge),
+                    const SizedBox(height: 8),
+                    Builder(
+                      builder: (context) {
+                        final filteredRecoveries = _pendingRecoveries.where((txn) {
+                          if (_isSettleIncome) {
+                            return txn.isSplit;
+                          } else {
+                            return txn.isDebt;
+                          }
+                        }).toList();
+
+                        if (filteredRecoveries.isEmpty) {
+                          return const Text('No pending records found.');
+                        }
+
+                        return Column(
+                          children: filteredRecoveries.map((txn) {
+                            final original = (txn.isSplit && txn.type != 'transfer') 
+                                ? (txn.amount - (txn.userShareAmount ?? txn.amount)) 
+                                : txn.amount;
+                            final remaining = original - txn.settledAmount;
+                            final isSelected = _settlementAllocations.containsKey(txn.id);
+
+                            final category = _categories.firstWhere(
+                              (c) => c.id == txn.categoryId,
+                              orElse: () => Category(id: -1, name: 'Unknown', type: '', icon: '📌', color: 0, isSystem: true, sortOrder: 0),
+                            );
+                            final account = _accounts.firstWhere(
+                              (a) => a.id == txn.accountId,
+                              orElse: () => Account(id: -1, name: 'Unknown', type: '', icon: '💰', color: 0, initialBalance: 0, currentBalance: 0, currency: '', archived: false, isIgnored: false, sortOrder: 0, createdAt: DateTime.now()),
+                            );
+
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 8.0),
+                              child: Row(
+                                children: [
+                                  Checkbox(
+                                    value: isSelected,
+                                    onChanged: (selected) {
+                                      setState(() {
+                                        if (selected == true) {
+                                          _settlementAllocations[txn.id] = remaining;
+                                        } else {
+                                          _settlementAllocations.remove(txn.id);
+                                        }
+                                        if (_settlementAllocations.isNotEmpty) {
+                                          _amount = _settlementAllocations.values
+                                              .fold(0.0, (a, b) => a + b)
+                                              .toStringAsFixed(2);
+                                        } else {
+                                          _amount = '';
+                                        }
+                                      });
+                                    },
+                                    activeColor: AppColors.accentViolet,
+                                  ),
+                                  Expanded(
+                                    child: GestureDetector(
+                                      behavior: HitTestBehavior.opaque,
+                                      onTap: () {
+                                        showDialog(
+                                          context: context,
+                                          builder: (_) => TransactionDetailDialog(
+                                            txn: TransactionWithDetails(
+                                              transaction: txn,
+                                              accountName: account.name,
+                                              categoryName: category.name,
+                                              categoryIcon: category.icon,
+                                              categoryColor: category.color,
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(txn.note.isNotEmpty ? txn.note : (txn.isSplit ? (txn.type == 'transfer' ? 'Lent' : 'Split Payment') : 'Borrowed'), style: AppTypography.bodyMedium),
+                                          Text('${category.icon} ${category.name} • ${account.name}', style: AppTypography.bodySmall),
+                                          Text('Remaining: \u20B9${remaining.toStringAsFixed(2)}', style: AppTypography.bodySmall.copyWith(color: AppColors.expense)),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  if (isSelected)
+                                    SizedBox(
+                                      width: 80,
+                                      child: _SettlementAmountInput(
+                                        initialValue: _settlementAllocations[txn.id] ?? 0.0,
+                                        onChanged: (newAmt) {
+                                          setState(() {
+                                            _settlementAllocations[txn.id] = newAmt;
+                                            _amount = _settlementAllocations.values
+                                                .fold(0.0, (a, b) => a + b)
+                                                .toStringAsFixed(2);
+                                          });
+                                        },
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                        );
+                      }
+                    ),
+                  ],
                   const SizedBox(height: 16),
 
                   // Notes section
@@ -674,51 +962,54 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                     minLines: 2,
                   ),
                   const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text('Itemized List', style: AppTypography.labelLarge),
-                      TextButton.icon(
-                        onPressed: () {
+                  if (_type != TransactionType.settle) ...[
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('Itemized List', style: AppTypography.labelLarge),
+                        TextButton.icon(
+                          onPressed: () {
+                            setState(() {
+                              _itemEntries.add(ItemEntry());
+                            });
+                          },
+                          icon: const Icon(Icons.add, size: 16),
+                          label: const Text('Add Item'),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            visualDensity: VisualDensity.compact,
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (_itemEntries.isNotEmpty)
+                      ItemizedNotes(
+                        items: _itemEntries,
+                        onTotalChanged: (total) {
                           setState(() {
-                            _itemEntries.add(ItemEntry());
+                            _amount = total.toStringAsFixed(2);
                           });
                         },
-                        icon: const Icon(Icons.add, size: 16),
-                        label: const Text('Add Item'),
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                          visualDensity: VisualDensity.compact,
-                        ),
                       ),
-                    ],
-                  ),
-                  if (_itemEntries.isNotEmpty)
-                    ItemizedNotes(
-                      items: _itemEntries,
-                      onTotalChanged: (total) {
-                        setState(() {
-                          _amount = total.toStringAsFixed(2);
-                        });
-                      },
-                    ),
-                  const SizedBox(height: 12),
+                    const SizedBox(height: 12),
+                  ],
 
                   // Split payment toggle
-                  _SplitPaymentSection(
-                    isSplit: _isSplit,
-                    onSplitChanged: (v) => setState(() => _isSplit = v),
-                    people: _splitPeople,
-                    onPeopleChanged: (v) => setState(() => _splitPeople = v),
-                    isCustomShare: _splitCustomShare,
-                    onCustomChanged: (v) =>
-                        setState(() => _splitCustomShare = v),
-                    customShareController: _customShareController,
-                    totalAmount: double.tryParse(_amount) ?? 0,
-                    isEditingCustomShare: _isEditingCustomShare,
-                    onCustomShareTap: () =>
-                        setState(() => _isEditingCustomShare = true),
-                  ),
+                  if (_type != TransactionType.settle && enableSplitSettle)
+                    _SplitPaymentSection(
+                      isSplit: _isSplit,
+                      onSplitChanged: (v) => setState(() => _isSplit = v),
+                      people: _splitPeople,
+                      onPeopleChanged: (v) => setState(() => _splitPeople = v),
+                      isCustomShare: _splitCustomShare,
+                      onCustomChanged: (v) =>
+                          setState(() => _splitCustomShare = v),
+                      customShareController: _customShareController,
+                      totalAmount: double.tryParse(_amount) ?? 0,
+                      isEditingCustomShare: _isEditingCustomShare,
+                      onCustomShareTap: () =>
+                          setState(() => _isEditingCustomShare = true),
+                    ),
                 ],
               ),
             ),
@@ -752,6 +1043,38 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                             _customShareController.text = v;
                           } else {
                             _amount = v;
+                            if (_type == TransactionType.settle && _settlementAllocations.isNotEmpty) {
+                              final totalAmt = double.tryParse(v) ?? 0.0;
+                              if (totalAmt >= 0) {
+                                double totalRemaining = 0;
+                                final List<MapEntry<int, double>> eligible = [];
+                                for (final txn in _pendingRecoveries) {
+                                  if (_settlementAllocations.containsKey(txn.id)) {
+                                    final original = (txn.isSplit && txn.type != 'transfer') 
+                                        ? (txn.amount - (txn.userShareAmount ?? txn.amount)) 
+                                        : txn.amount;
+                                    final remaining = original - txn.settledAmount;
+                                    totalRemaining += remaining;
+                                    eligible.add(MapEntry(txn.id, remaining));
+                                  }
+                                }
+                                
+                                if (totalRemaining > 0) {
+                                  double remainingToDistribute = totalAmt;
+                                  for (int i = 0; i < eligible.length; i++) {
+                                    if (i == eligible.length - 1) {
+                                      _settlementAllocations[eligible[i].key] = remainingToDistribute;
+                                    } else {
+                                      final share = (totalAmt * (eligible[i].value / totalRemaining)).floorToDouble();
+                                      _settlementAllocations[eligible[i].key] = share;
+                                      remainingToDistribute -= share;
+                                    }
+                                  }
+                                } else {
+                                  _settlementAllocations.updateAll((key, value) => 0.0);
+                                }
+                              }
+                            }
                           }
                         });
                       },
@@ -1205,4 +1528,69 @@ Future<DateTime?> _showMonthYearPicker(
       );
     },
   );
+}
+
+class _SettlementAmountInput extends StatefulWidget {
+  final double initialValue;
+  final ValueChanged<double> onChanged;
+
+  const _SettlementAmountInput({
+    required this.initialValue,
+    required this.onChanged,
+  });
+
+  @override
+  State<_SettlementAmountInput> createState() => _SettlementAmountInputState();
+}
+
+class _SettlementAmountInputState extends State<_SettlementAmountInput> {
+  late TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(
+      text: widget.initialValue > 0 ? widget.initialValue.toStringAsFixed(2) : '',
+    );
+  }
+
+  @override
+  void didUpdateWidget(covariant _SettlementAmountInput oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialValue != widget.initialValue) {
+      final currentText = _controller.text;
+      final newValStr = widget.initialValue > 0 ? widget.initialValue.toStringAsFixed(2) : '';
+      if (currentText != newValStr) {
+        _controller.value = TextEditingValue(
+          text: newValStr,
+          selection: TextSelection.collapsed(offset: newValStr.length),
+        );
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: _controller,
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      textAlign: TextAlign.right,
+      style: AppTypography.bodyMedium,
+      decoration: const InputDecoration(
+        prefixText: '\u20B9',
+        isDense: true,
+        contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      ),
+      onChanged: (val) {
+        final newAmt = double.tryParse(val) ?? 0.0;
+        widget.onChanged(newAmt);
+      },
+    );
+  }
 }

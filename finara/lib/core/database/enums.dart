@@ -9,7 +9,8 @@ enum AccountType {
   wallet,
   creditCard,
   investment,
-  loan;
+  loan,
+  debt;
 
   String get displayName => switch (this) {
     cash => 'Cash',
@@ -19,6 +20,7 @@ enum AccountType {
     creditCard => 'Credit Card',
     investment => 'Investment',
     loan => 'Loan',
+    debt => 'Debt',
   };
 
   String get icon => switch (this) {
@@ -29,6 +31,7 @@ enum AccountType {
     creditCard => '💳',
     investment => '📈',
     loan => '📉',
+    debt => '🤝',
   };
 }
 
@@ -39,7 +42,8 @@ enum TransactionType {
   transfer,
   creditCardPayment,
   loanPrincipalRepayment,
-  loanInterest;
+  loanInterest,
+  settle;
 
   String get displayName => switch (this) {
     income => 'Income',
@@ -48,6 +52,7 @@ enum TransactionType {
     creditCardPayment => 'Credit Card Payment',
     loanPrincipalRepayment => 'Principal Repayment',
     loanInterest => 'Interest Payment',
+    settle => 'Settle',
   };
 
   /// Whether this transaction type should be excluded from analytics by default.
@@ -55,6 +60,7 @@ enum TransactionType {
     transfer => true,
     creditCardPayment => true,
     loanPrincipalRepayment => true,
+    settle => true,
     _ => false,
   };
 }

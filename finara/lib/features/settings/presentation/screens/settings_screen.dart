@@ -174,6 +174,30 @@ class SettingsScreen extends ConsumerWidget {
                   );
                 },
               ),
+              const Divider(height: 1),
+              Consumer(
+                builder: (context, ref, child) {
+                  final enableSplitSettle = ref.watch(
+                    enableSplitAndSettleNotifierProvider,
+                  );
+                  return _SettingsTile(
+                    icon: Icons.call_split_outlined,
+                    title: 'Enable Split & Settle Features',
+                    subtitle: 'Show advanced features for splitting bills and settling debts',
+                    trailing: Switch.adaptive(
+                      value: enableSplitSettle,
+                      onChanged: (val) {
+                        ref
+                            .read(
+                              enableSplitAndSettleNotifierProvider.notifier,
+                            )
+                            .setEnabled(val);
+                      },
+                      activeColor: AppColors.accentViolet,
+                    ),
+                  );
+                },
+              ),
             ],
           ),
           const SizedBox(height: 24),

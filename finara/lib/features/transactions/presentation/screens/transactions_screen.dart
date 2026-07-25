@@ -388,10 +388,11 @@ class _TransactionList extends StatelessWidget {
 
         double dayTotal = 0;
         for (final t in dayTransactions) {
+          final amt = t.transaction.userShareAmount ?? t.transaction.amount;
           if (t.transaction.type == 'income') {
-            dayTotal += t.transaction.amount;
+            dayTotal += amt;
           } else if (t.transaction.type == 'expense') {
-            dayTotal -= t.transaction.amount;
+            dayTotal -= amt;
           }
         }
 
@@ -432,10 +433,12 @@ class _TransactionItem extends StatelessWidget {
     final isTransfer = t.type == 'transfer';
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final icon = isTransfer ? '🔄' : (txn.categoryIcon ?? '📌');
+    final isSettle = t.type == 'settle';
+
+    final icon = isTransfer ? '🔄' : (isSettle ? '✅' : (txn.categoryIcon ?? '📌'));
     final title = isTransfer
         ? '${txn.accountName} → ${txn.toAccountName ?? '?'}'
-        : (txn.categoryName ?? 'Uncategorized');
+        : (isSettle ? 'Settle' : (txn.categoryName ?? 'Uncategorized'));
 
     return Dismissible(
       key: ValueKey(t.id),
@@ -550,10 +553,12 @@ class _TransactionItem extends StatelessWidget {
                     ),
                   ),
                   AmountText(
-                    amount: isIncome ? t.amount : -t.amount,
+                    amount: (isIncome || (isSettle && !t.isDebt)) ? (t.userShareAmount ?? t.amount) : -(t.userShareAmount ?? t.amount),
                     size: AmountSize.small,
-                    colored: !isTransfer,
-                    overrideColor: isTransfer ? AppColors.transfer : null,
+                    colored: !isTransfer && !isSettle,
+                    overrideColor: isTransfer 
+                        ? AppColors.transfer 
+                        : (isSettle ? (!t.isDebt ? AppColors.income : AppColors.expense) : null),
                   ),
                 ],
               ),

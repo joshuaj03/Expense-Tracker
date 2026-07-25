@@ -64,6 +64,12 @@ class Transactions extends Table {
   RealColumn get userShareAmount => real().nullable()();
   TextColumn get itemizedListJson => text().nullable()();
 
+  // Settlement and debt tracking fields
+  RealColumn get settledAmount => real().withDefault(const Constant(0.0))();
+  BoolColumn get isFullySettled => boolean().withDefault(const Constant(false))();
+  BoolColumn get isDebt => boolean().withDefault(const Constant(false))();
+  IntColumn get settlementForTxnId => integer().nullable().references(Transactions, #id)();
+
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 }

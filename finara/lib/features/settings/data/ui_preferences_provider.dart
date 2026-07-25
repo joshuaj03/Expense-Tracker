@@ -19,3 +19,20 @@ class SideBySideTransactionUINotifier
         .setBool('side_by_side_txn_ui', isSideBySide);
   }
 }
+
+@Riverpod(keepAlive: true)
+class EnableSplitAndSettleNotifier extends _$EnableSplitAndSettleNotifier {
+  @override
+  bool build() {
+    final prefs = ref.watch(sharedPreferencesProvider);
+    // Enabled by default
+    return prefs.getBool('enable_split_and_settle') ?? true;
+  }
+
+  void setEnabled(bool isEnabled) {
+    state = isEnabled;
+    ref
+        .read(sharedPreferencesProvider)
+        .setBool('enable_split_and_settle', isEnabled);
+  }
+}

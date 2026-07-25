@@ -184,8 +184,8 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
       final success = rows > 0;
       _log.db(
         'UPDATE transaction id=$id success=$success '
-        'type=${transaction.type.value} '
-        'amount=${transaction.amount.value}',
+        'type=${transaction.type.present ? transaction.type.value : 'unchanged'} '
+        'amount=${transaction.amount.present ? transaction.amount.value : 'unchanged'}',
       );
       return success;
     } catch (e, st) {
@@ -207,7 +207,6 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
     try {
       final id = await into(transactions).insert(txn);
 
-      // Update account balance
       final amount = txn.amount.value;
       final type = txn.type.value;
       final accId = txn.accountId.value;
@@ -221,6 +220,12 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
         newBalance += amount;
       } else if (type == 'expense') {
         newBalance -= amount;
+      } else if (type == 'settle') {
+        if (txn.isDebt.value) { // Expense (paying back)
+          newBalance -= amount;
+        } else { // Income (recovering)
+          newBalance += amount;
+        }
       } else if (type == 'transfer' || type == 'creditCardPayment') {
         newBalance -= amount;
         // Update destination account
@@ -272,11 +277,31 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
         accounts,
       )..where((a) => a.id.equals(txn.accountId))).getSingle();
 
+      // If this was a settlement, reverse the settled amount on the parent
+      if (txn.type == 'settle' && txn.settlementForTxnId != null) {
+        final parentTxn = await getTransactionById(txn.settlementForTxnId!);
+        if (parentTxn != null) {
+          final newSettledAmount = parentTxn.settledAmount - txn.amount;
+          await (update(transactions)..where((t) => t.id.equals(parentTxn.id))).write(
+            TransactionsCompanion(
+              settledAmount: Value(newSettledAmount),
+              isFullySettled: const Value(false),
+            ),
+          );
+        }
+      }
+
       double newBalance = account.currentBalance;
       if (txn.type == 'income') {
         newBalance -= txn.amount;
       } else if (txn.type == 'expense') {
         newBalance += txn.amount;
+      } else if (txn.type == 'settle') {
+        if (txn.isDebt) { // Reversed expense
+          newBalance += txn.amount;
+        } else { // Reversed income
+          newBalance -= txn.amount;
+        }
       } else if (txn.type == 'transfer' || txn.type == 'creditCardPayment') {
         newBalance += txn.amount;
         if (txn.toAccountId != null) {
@@ -379,10 +404,11 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
       double expense = 0;
       for (final row in rows) {
         final t = row.readTable(transactions);
+        final amt = t.userShareAmount ?? t.amount;
         if (t.type == 'income') {
-          income += t.amount;
+          income += amt;
         } else if (t.type == 'expense') {
-          expense += t.amount;
+          expense += amt;
         }
       }
       return (income: income, expense: expense);
@@ -408,8 +434,9 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
       final map = <int, double>{};
       for (final row in rows) {
         final t = row.readTable(transactions);
+        final amt = t.userShareAmount ?? t.amount;
         if (t.categoryId != null) {
-          map[t.categoryId!] = (map[t.categoryId!] ?? 0) + t.amount;
+          map[t.categoryId!] = (map[t.categoryId!] ?? 0) + amt;
         }
       }
       return map;
@@ -440,8 +467,9 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
       double expense = 0;
       for (final row in rows) {
         final t = row.readTable(transactions);
-        if (t.type == 'income') income += t.amount;
-        if (t.type == 'expense') expense += t.amount;
+        final amt = t.userShareAmount ?? t.amount;
+        if (t.type == 'income') income += amt;
+        if (t.type == 'expense') expense += amt;
       }
 
       results.add((
@@ -453,5 +481,27 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
     }
 
     return results;
+  }
+
+  Future<List<Transaction>> getPendingRecoveries() async {
+    final query = select(transactions)
+      ..where((t) =>
+          t.isFullySettled.equals(false) &
+          (t.isSplit.equals(true) | t.isDebt.equals(true)))
+      ..orderBy([
+        (t) => OrderingTerm(expression: t.date, mode: OrderingMode.desc),
+      ]);
+    return query.get();
+  }
+
+  Future<List<Transaction>> getSettledRecoveries() async {
+    final query = select(transactions)
+      ..where((t) =>
+          t.isFullySettled.equals(true) &
+          (t.isSplit.equals(true) | t.isDebt.equals(true)))
+      ..orderBy([
+        (t) => OrderingTerm(expression: t.date, mode: OrderingMode.desc),
+      ]);
+    return query.get();
   }
 }
