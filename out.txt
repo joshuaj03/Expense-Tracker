@@ -1,0 +1,679 @@
+                              GestureDetector(
+                                onTap: () async {
+                                  final date = await _showMonthYearPicker(
+                                    context,
+                                    _billingMonth,
+                                  );
+                                  if (date != null) {
+                                    setState(() => _billingMonth = date);
+                                  }
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 8,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.accentViolet.withValues(
+                                      alpha: 0.1,
+                                    ),
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(
+                                      color: AppColors.accentViolet.withValues(
+                                        alpha: 0.3,
+                                      ),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(
+                                        Icons.calendar_month,
+                                        size: 16,
+                                        color: AppColors.accentViolet,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        DateFormat(
+                                          'MMM yyyy',
+                                        ).format(_billingMonth),
+                                        style: AppTypography.labelMedium
+                                            .copyWith(
+                                              color: AppColors.accentViolet,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    if (_selectedToAccount?.type == AccountType.loan.name) ...[
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? AppColors.darkCard
+                              : AppColors.lightCard,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Payment Type',
+                              style: AppTypography.labelMedium,
+                            ),
+                            const SizedBox(height: 8),
+                            Center(
+                              child: SegmentedControl<bool>(
+                                segments: const [false, true],
+                                selected: _isLoanInterest,
+                                labelBuilder: (isInterest) =>
+                                    isInterest ? 'Interest' : 'Principal',
+                                onChanged: (v) =>
+                                    setState(() => _isLoanInterest = v),
+                              ),
+                            ),
+                            if (!_isLoanInterest) ...[
+                              const SizedBox(height: 8),
+                              CheckboxListTile(
+                                title: Text(
+                                  'Include as Expense (Analytics)',
+                                  style: AppTypography.bodyMedium,
+                                ),
+                                subtitle: Text(
+                                  'Check if paying someone else\'s loan',
+                                  style: AppTypography.bodySmall,
+                                ),
+                                value: _includePrincipalInAnalytics,
+                                onChanged: (v) => setState(
+                                  () =>
+                                      _includePrincipalInAnalytics = v ?? false,
+                                ),
+                                contentPadding: EdgeInsets.zero,
+                                controlAffinity:
+                                    ListTileControlAffinity.leading,
+                                activeColor: AppColors.accentViolet,
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                  const SizedBox(height: 16),
+
+                  // Notes section
+                  Text('Notes', style: AppTypography.labelLarge),
+                  const SizedBox(height: 6),
+                  TextField(
+                    controller: _noteController,
+                    decoration: const InputDecoration(
+                      hintText: 'Add a note...',
+                      alignLabelWithHint: true,
+                    ),
+                    maxLines: 3,
+                    minLines: 2,
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Itemized List', style: AppTypography.labelLarge),
+                      TextButton.icon(
+                        onPressed: () {
+                          setState(() {
+                            _itemEntries.add(ItemEntry());
+                          });
+                        },
+                        icon: const Icon(Icons.add, size: 16),
+                        label: const Text('Add Item'),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (_itemEntries.isNotEmpty)
+                    ItemizedNotes(
+                      items: _itemEntries,
+                      onTotalChanged: (total) {
+                        setState(() {
+                          _amount = total.toStringAsFixed(2);
+                        });
+                      },
+                    ),
+                  const SizedBox(height: 12),
+
+                  // Split payment toggle
+                  _SplitPaymentSection(
+                    isSplit: _isSplit,
+                    onSplitChanged: (v) => setState(() => _isSplit = v),
+                    people: _splitPeople,
+                    onPeopleChanged: (v) => setState(() => _splitPeople = v),
+                    isCustomShare: _splitCustomShare,
+                    onCustomChanged: (v) =>
+                        setState(() => _splitCustomShare = v),
+                    customShareController: _customShareController,
+                    totalAmount: double.tryParse(_amount) ?? 0,
+                    isEditingCustomShare: _isEditingCustomShare,
+                    onCustomShareTap: () =>
+                        setState(() => _isEditingCustomShare = true),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // Fixed bottom: Keypad → Date/Time
+          Container(
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+              border: Border(
+                top: BorderSide(
+                  color: Theme.of(context).dividerColor,
+                  width: 0.5,
+                ),
+              ),
+            ),
+            child: SafeArea(
+              top: false,
+              child: Column(
+                children: [
+                  // Numeric keypad
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                    child: NumericKeypad(
+                      value: _isEditingCustomShare
+                          ? _customShareController.text
+                          : _amount,
+                      onValueChanged: (v) {
+                        setState(() {
+                          if (_isEditingCustomShare) {
+                            _customShareController.text = v;
+                          } else {
+                            _amount = v;
+                          }
+                        });
+                      },
+                    ),
+                  ),
+                  // Date/Time row
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: _DateTimeChip(
+                            icon: Icons.calendar_today,
+                            label: DateFormatter.relative(_date),
+                            onTap: () async {
+                              final date = await showDatePicker(
+                                context: context,
+                                initialDate: _date,
+                                firstDate: DateTime(2020),
+                                lastDate: DateTime.now().add(
+                                  const Duration(days: 1),
+                                ),
+                              );
+                              if (date != null) {
+                                setState(
+                                  () => _date = DateTime(
+                                    date.year,
+                                    date.month,
+                                    date.day,
+                                    _date.hour,
+                                    _date.minute,
+                                  ),
+                                );
+                              }
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _DateTimeChip(
+                            icon: Icons.access_time,
+                            label: DateFormatter.time(_date),
+                            onTap: () async {
+                              final time = await showTimePicker(
+                                context: context,
+                                initialTime: TimeOfDay.fromDateTime(_date),
+                              );
+                              if (time != null) {
+                                setState(
+                                  () => _date = DateTime(
+                                    _date.year,
+                                    _date.month,
+                                    _date.day,
+                                    time.hour,
+                                    time.minute,
+                                  ),
+                                );
+                              }
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDelete() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Transaction?'),
+        content: const Text('This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text(
+              'Delete',
+              style: TextStyle(color: AppColors.expense),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (confirm == true && mounted) {
+      final dao = ref.read(transactionsDaoProvider);
+      await dao.deleteTransaction(widget.editTransactionId!);
+      if (mounted) context.pop();
+    }
+  }
+}
+
+/// Tile widget that opens a bottom sheet picker.
+class _PickerTile extends StatelessWidget {
+  final String label;
+  final String icon;
+  final String value;
+  final VoidCallback onTap;
+  final bool isCompact;
+
+  const _PickerTile({
+    required this.label,
+    required this.icon,
+    required this.value,
+    required this.onTap,
+    this.isCompact = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkCard : AppColors.lightCard,
+        borderRadius: BorderRadius.circular(14),
+        border: isCompact
+            ? Border.all(
+                color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+              )
+            : null,
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(14),
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: isCompact ? 12 : 16,
+              vertical: isCompact ? 10 : 14,
+            ),
+            child: Row(
+              children: [
+                Text(icon, style: TextStyle(fontSize: isCompact ? 24 : 20)),
+                SizedBox(width: isCompact ? 8 : 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(label, style: AppTypography.labelSmall),
+                      const SizedBox(height: 2),
+                      Text(
+                        value,
+                        style: AppTypography.bodyMedium.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                if (!isCompact) const Icon(Icons.keyboard_arrow_down, size: 20),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Date/time chip for the bottom row.
+class _DateTimeChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _DateTimeChip({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Material(
+      color: isDark ? AppColors.darkCard : AppColors.lightCard,
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 16, color: AppColors.accentViolet),
+              const SizedBox(width: 8),
+              Text(label, style: AppTypography.labelMedium),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Split payment section.
+class _SplitPaymentSection extends StatelessWidget {
+  final bool isSplit;
+  final ValueChanged<bool> onSplitChanged;
+  final int people;
+  final ValueChanged<int> onPeopleChanged;
+  final bool isCustomShare;
+  final ValueChanged<bool> onCustomChanged;
+  final TextEditingController customShareController;
+  final double totalAmount;
+  final bool isEditingCustomShare;
+  final VoidCallback onCustomShareTap;
+
+  const _SplitPaymentSection({
+    required this.isSplit,
+    required this.onSplitChanged,
+    required this.people,
+    required this.onPeopleChanged,
+    required this.isCustomShare,
+    required this.onCustomChanged,
+    required this.customShareController,
+    required this.totalAmount,
+    required this.isEditingCustomShare,
+    required this.onCustomShareTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkCard : AppColors.lightCard,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.group_outlined, size: 20),
+                  const SizedBox(width: 8),
+                  Text('Split Payment', style: AppTypography.bodyMedium),
+                ],
+              ),
+              Switch.adaptive(
+                value: isSplit,
+                onChanged: onSplitChanged,
+                activeTrackColor: AppColors.accentViolet,
+              ),
+            ],
+          ),
+          if (isSplit) ...[
+            const SizedBox(height: 8),
+            // Toggle: Equal split vs Custom
+            Row(
+              children: [
+                Expanded(
+                  child: ChoiceChip(
+                    label: const Text('Equal Split'),
+                    selected: !isCustomShare,
+                    onSelected: (_) => onCustomChanged(false),
+                    selectedColor: AppColors.accentViolet.withValues(
+                      alpha: 0.2,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ChoiceChip(
+                    label: const Text('Custom Share'),
+                    selected: isCustomShare,
+                    onSelected: (_) => onCustomChanged(true),
+                    selectedColor: AppColors.accentViolet.withValues(
+                      alpha: 0.2,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            if (!isCustomShare)
+              // Equal split: people counter
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  IconButton(
+                    onPressed: people > 2
+                        ? () => onPeopleChanged(people - 1)
+                        : null,
+                    icon: const Icon(Icons.remove_circle_outline),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.accentViolet.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      '$people people',
+                      style: AppTypography.bodyMedium.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => onPeopleChanged(people + 1),
+                    icon: const Icon(Icons.add_circle_outline),
+                  ),
+                ],
+              )
+            else
+              // Custom share input
+              GestureDetector(
+                onTap: onCustomShareTap,
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.darkCard : Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isEditingCustomShare
+                          ? AppColors.accentViolet
+                          : Theme.of(context).dividerColor,
+                      width: isEditingCustomShare ? 2 : 1,
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('My share amount', style: AppTypography.labelSmall),
+                      const SizedBox(height: 4),
+                      Text('\u20B9 ', style: AppTypography.bodyMedium),
+                    ],
+                  ),
+                ),
+              ),
+
+            const SizedBox(height: 8),
+            // Summary
+            if (totalAmount > 0)
+              Text(
+                isCustomShare
+                    ? 'Total: \u20B9${totalAmount.toStringAsFixed(2)}'
+                    : 'Total: \u20B9${totalAmount.toStringAsFixed(2)} ÷ $people = \u20B9${(totalAmount / people).toStringAsFixed(2)} each',
+                style: AppTypography.bodySmall.copyWith(
+                  color: AppColors.accentViolet,
+                ),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+Future<DateTime?> _showMonthYearPicker(
+    BuildContext context,
+    DateTime initialDate,
+  ) async {
+    DateTime selected = initialDate;
+    return showDialog<DateTime>(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.chevron_left),
+                    onPressed: () => setState(
+                      () => selected = DateTime(
+                        selected.year - 1,
+                        selected.month,
+                      ),
+                    ),
+                  ),
+                  Text('', style: AppTypography.headlineSmall),
+                  IconButton(
+                    icon: const Icon(Icons.chevron_right),
+                    onPressed: () => setState(
+                      () => selected = DateTime(
+                        selected.year + 1,
+                        selected.month,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              content: SizedBox(
+                width: 300,
+                height: 300,
+                child: GridView.builder(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3,
+                    childAspectRatio: 1.5,
+                  ),
+                  itemCount: 12,
+                  itemBuilder: (context, index) {
+                    final month = index + 1;
+                    final isSelected = month == selected.month;
+                    return InkWell(
+                      onTap: () {
+                        setState(
+                          () => selected = DateTime(selected.year, month),
+                        );
+                      },
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        margin: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? AppColors.accentViolet
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          DateFormat('MMM').format(DateTime(2020, month)),
+                          style: AppTypography.bodyMedium.copyWith(
+                            color: isSelected
+                                ? Colors.white
+                                : Theme.of(context).textTheme.bodyMedium?.color,
+                            fontWeight: isSelected
+                                ? FontWeight.bold
+                                : FontWeight.normal,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('CANCEL'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.pop(context, selected),
+                  child: const Text('OK'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+}
+}

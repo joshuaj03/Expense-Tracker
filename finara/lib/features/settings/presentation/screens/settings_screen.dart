@@ -8,6 +8,7 @@ import 'package:finara/features/settings/data/theme_provider.dart';
 import 'package:finara/features/settings/data/privacy_provider.dart';
 import 'package:finara/features/settings/data/currency_provider.dart';
 import 'package:finara/features/settings/data/ui_preferences_provider.dart';
+import 'package:finara/core/providers/providers.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -200,6 +201,14 @@ class SettingsScreen extends ConsumerWidget {
                 title: 'Budgets',
                 onTap: () => context.push('/budgets'),
               ),
+              const Divider(height: 1),
+              _SettingsTile(
+                icon: Icons.delete_forever_outlined,
+                title: 'Delete all data',
+                iconColor: AppColors.expense,
+                textColor: AppColors.expense,
+                onTap: () => _showDeleteConfirmation(context, ref),
+              ),
             ],
           ),
           const SizedBox(height: 24),
@@ -226,6 +235,42 @@ class SettingsScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _showDeleteConfirmation(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Are you sure you want to delete all data?'),
+          content: const Text(
+            'Once done all the data will be permanently erased, it is advised that you should back up before proceeding.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.expense,
+              ),
+              child: const Text('Delete All'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed == true && context.mounted) {
+      await ref.read(databaseProvider).clearAllData();
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('All data has been deleted.')),
+        );
+      }
+    }
   }
 }
 
@@ -266,6 +311,8 @@ class _SettingsTile extends StatelessWidget {
   final String? subtitle;
   final Widget? trailing;
   final VoidCallback? onTap;
+  final Color? iconColor;
+  final Color? textColor;
 
   const _SettingsTile({
     required this.icon,
@@ -273,19 +320,24 @@ class _SettingsTile extends StatelessWidget {
     this.subtitle,
     this.trailing,
     this.onTap,
+    this.iconColor,
+    this.textColor,
   });
 
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      leading: Icon(icon, size: 22, color: AppColors.accentViolet),
-      title: Text(title, style: AppTypography.bodyMedium),
+      leading: Icon(icon, size: 22, color: iconColor ?? AppColors.accentViolet),
+      title: Text(
+        title, 
+        style: AppTypography.bodyMedium.copyWith(color: textColor),
+      ),
       subtitle: subtitle != null
           ? Text(subtitle!, style: AppTypography.bodySmall)
           : null,
       trailing:
           trailing ??
-          (onTap != null ? const Icon(Icons.chevron_right, size: 20) : null),
+          (onTap != null ? Icon(Icons.chevron_right, size: 20, color: textColor) : null),
       onTap: onTap,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),

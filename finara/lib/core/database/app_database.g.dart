@@ -1016,7 +1016,7 @@ class $CategoriesTable extends Categories
     false,
     type: DriftSqlType.string,
     requiredDuringInsert: false,
-    defaultValue: const Constant('ðŸ“'),
+    defaultValue: const Constant('📌'),
   );
   static const VerificationMeta _colorMeta = const VerificationMeta('color');
   @override

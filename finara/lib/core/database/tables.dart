@@ -34,7 +34,7 @@ class Categories extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get name => text().withLength(min: 1, max: 100)();
   TextColumn get type => text()(); // CategoryType enum stored as string
-  TextColumn get icon => text().withDefault(const Constant('ðŸ“'))();
+  TextColumn get icon => text().withDefault(const Constant('📌'))();
   IntColumn get color => integer().withDefault(const Constant(0xFF6C63FF))();
   IntColumn get parentId => integer().nullable().references(Categories, #id)();
   BoolColumn get isSystem => boolean().withDefault(const Constant(false))();

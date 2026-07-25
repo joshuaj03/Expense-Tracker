@@ -403,7 +403,7 @@ class _RecentTransactionsList extends ConsumerWidget {
       builder: (context, snapshot) {
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
           return const EmptyState(
-            icon: 'ðŸ“',
+            icon: '📄',
             title: 'No transactions yet',
             subtitle: 'Tap + to add your first transaction',
           );
