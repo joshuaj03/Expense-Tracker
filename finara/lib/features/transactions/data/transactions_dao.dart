@@ -54,9 +54,12 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
 
     if (accountId != null) {
       query.where(
-        transactions.accountId.equals(accountId) |
-            transactions.toAccountId.equals(accountId),
+        (transactions.accountId.equals(accountId) |
+            transactions.toAccountId.equals(accountId)) &
+            transactions.isDraft.equals(false),
       );
+    } else {
+      query.where(transactions.isDraft.equals(false));
     }
     if (limit != null) {
       query.limit(limit);
@@ -95,7 +98,7 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
       ),
     ]);
 
-    query.where(transactions.date.isBetweenValues(startDate, endDate));
+    query.where(transactions.date.isBetweenValues(startDate, endDate) & transactions.isDraft.equals(false));
     query.orderBy([OrderingTerm.desc(transactions.date)]);
 
     return query.watch().map(
@@ -137,7 +140,8 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
     query.where(
       transactions.date.isBetweenValues(startDate, endDate) &
           (transactions.accountId.equals(accountId) |
-              transactions.toAccountId.equals(accountId)),
+              transactions.toAccountId.equals(accountId)) &
+          transactions.isDraft.equals(false),
     );
     query.orderBy([OrderingTerm.desc(transactions.date)]);
 
@@ -356,9 +360,10 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
     ]);
 
     q.where(
-      transactions.note.like('%$query%') |
+      (transactions.note.like('%$query%') |
           categories.name.like('%$query%') |
-          accounts.name.like('%$query%'),
+          accounts.name.like('%$query%')) & 
+          transactions.isDraft.equals(false),
     );
     q.orderBy([OrderingTerm.desc(transactions.date)]);
 
@@ -396,7 +401,8 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
     query.where(
       transactions.date.isBetweenValues(startDate, endDate) &
           transactions.isExcludedFromAnalytics.equals(false) &
-          accounts.isIgnored.equals(false),
+          accounts.isIgnored.equals(false) &
+          transactions.isDraft.equals(false),
     );
 
     return query.watch().map((rows) {
@@ -427,7 +433,8 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
       transactions.date.isBetweenValues(startDate, endDate) &
           transactions.type.equals('expense') &
           transactions.isExcludedFromAnalytics.equals(false) &
-          accounts.isIgnored.equals(false),
+          accounts.isIgnored.equals(false) &
+          transactions.isDraft.equals(false),
     );
 
     return query.watch().map((rows) {
@@ -459,7 +466,8 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
       query.where(
         transactions.date.isBetweenValues(date, endDate) &
             transactions.isExcludedFromAnalytics.equals(false) &
-            accounts.isIgnored.equals(false),
+            accounts.isIgnored.equals(false) &
+            transactions.isDraft.equals(false),
       );
       final rows = await query.get();
 
@@ -487,7 +495,8 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
     final query = select(transactions)
       ..where((t) =>
           t.isFullySettled.equals(false) &
-          (t.isSplit.equals(true) | t.isDebt.equals(true)))
+          (t.isSplit.equals(true) | t.isDebt.equals(true)) &
+          t.isDraft.equals(false))
       ..orderBy([
         (t) => OrderingTerm(expression: t.date, mode: OrderingMode.desc),
       ]);
@@ -498,10 +507,44 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
     final query = select(transactions)
       ..where((t) =>
           t.isFullySettled.equals(true) &
-          (t.isSplit.equals(true) | t.isDebt.equals(true)))
+          (t.isSplit.equals(true) | t.isDebt.equals(true)) &
+          t.isDraft.equals(false))
       ..orderBy([
         (t) => OrderingTerm(expression: t.date, mode: OrderingMode.desc),
       ]);
     return query.get();
+  }
+
+  /// Watch all draft transactions.
+  Stream<List<TransactionWithDetails>> watchDrafts() {
+    _log.db('WATCH draft transactions');
+    final toAccount = alias(accounts, 'toAcc');
+    final query = select(transactions).join([
+      innerJoin(accounts, accounts.id.equalsExp(transactions.accountId)),
+      leftOuterJoin(
+        toAccount,
+        toAccount.id.equalsExp(transactions.toAccountId),
+      ),
+      leftOuterJoin(
+        categories,
+        categories.id.equalsExp(transactions.categoryId),
+      ),
+    ]);
+
+    query.where(transactions.isDraft.equals(true));
+    query.orderBy([OrderingTerm.desc(transactions.createdAt)]);
+
+    return query.watch().map(
+      (rows) => rows.map((row) {
+        return TransactionWithDetails(
+          transaction: row.readTable(transactions),
+          accountName: row.readTable(accounts).name,
+          toAccountName: row.readTableOrNull(toAccount)?.name,
+          categoryName: row.readTableOrNull(categories)?.name,
+          categoryIcon: row.readTableOrNull(categories)?.icon,
+          categoryColor: row.readTableOrNull(categories)?.color,
+        );
+      }).toList(),
+    );
   }
 }

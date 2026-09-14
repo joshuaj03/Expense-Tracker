@@ -19,6 +19,15 @@ subprojects {
     project.evaluationDependsOn(":app")
 }
 
+subprojects {
+    configurations.configureEach {
+        resolutionStrategy {
+            force("androidx.concurrent:concurrent-futures:1.2.0")
+            force("com.google.guava:guava:32.1.2-android")
+        }
+    }
+}
+
 tasks.register<Delete>("clean") {
     delete(rootProject.layout.buildDirectory)
 }
@@ -27,6 +36,10 @@ subprojects {
     plugins.withId("com.android.library") {
         extensions.configure<com.android.build.gradle.LibraryExtension> {
             compileSdk = 36
+        }
+        dependencies {
+            add("implementation", "androidx.concurrent:concurrent-futures:1.2.0")
+            add("implementation", "com.google.guava:guava:32.1.2-android")
         }
     }
 }

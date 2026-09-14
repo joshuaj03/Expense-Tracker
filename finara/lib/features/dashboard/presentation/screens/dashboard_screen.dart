@@ -14,6 +14,7 @@ import 'package:finara/features/transactions/data/transactions_provider.dart';
 import 'package:finara/features/budgets/data/budgets_provider.dart';
 import 'package:finara/features/accounts/data/accounts_provider.dart';
 import 'package:finara/features/settings/data/privacy_provider.dart';
+import 'package:finara/features/settings/data/ui_preferences_provider.dart';
 import '../../data/dashboard_time_view_provider.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../core/utils/logger.dart';
@@ -59,6 +60,16 @@ class DashboardScreen extends ConsumerWidget {
           ],
         ),
         actions: [
+          Consumer(
+            builder: (context, ref, child) {
+              final isScannerEnabled = ref.watch(enableSmartScanNotifierProvider);
+              if (!isScannerEnabled) return const SizedBox.shrink();
+              return IconButton(
+                icon: const Icon(Icons.document_scanner_outlined),
+                onPressed: () => context.push('/smart-scan'),
+              );
+            },
+          ),
           Consumer(
             builder: (context, ref, child) {
               final timeView = ref.watch(dashboardTimeViewNotifierProvider);
@@ -120,7 +131,9 @@ class DashboardScreen extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _BalanceHeroCard(),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
+            const _PendingDraftsSection(),
+            const SizedBox(height: 16),
             const CreditCardRemindersCard(),
             _QuickActions(),
             const SizedBox(height: 24),
@@ -674,6 +687,90 @@ class _BudgetSnapshotSection extends ConsumerWidget {
               }).toList(),
             );
           },
+        );
+      },
+    );
+  }
+}
+
+class _PendingDraftsSection extends ConsumerWidget {
+  const _PendingDraftsSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final transactionsDao = ref.watch(transactionsDaoProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return StreamBuilder<List<TransactionWithDetails>>(
+      stream: transactionsDao.watchDrafts(),
+      builder: (context, snapshot) {
+        final drafts = snapshot.data ?? [];
+        if (drafts.isEmpty) return const SizedBox.shrink();
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Pending Drafts',
+              style: AppTypography.headlineMedium.copyWith(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 110,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                itemCount: drafts.length,
+                itemBuilder: (context, index) {
+                  final draft = drafts[index];
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 12),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(16),
+                      onTap: () {
+                        context.push('/add-transaction?editId=${draft.transaction.id}');
+                      },
+                      child: Container(
+                        width: 250,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: AppColors.warning.withValues(alpha: 0.3), width: 1),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.warning_amber_rounded, color: AppColors.warning, size: 16),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Needs Review',
+                                  style: AppTypography.labelSmall.copyWith(color: AppColors.warning),
+                                ),
+                              ],
+                            ),
+                            const Spacer(),
+                            Text(
+                              draft.categoryName ?? draft.transaction.note.split('\n').firstOrNull ?? 'Draft Record',
+                              style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.w600),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            AmountText(
+                              amount: draft.transaction.type == 'expense' ? -draft.transaction.amount : draft.transaction.amount,
+                              size: AmountSize.small,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
         );
       },
     );

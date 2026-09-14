@@ -40,5 +40,22 @@ final enableSplitAndSettleNotifierProvider =
     );
 
 typedef _$EnableSplitAndSettleNotifier = Notifier<bool>;
+String _$enableSmartScanNotifierHash() =>
+    r'5693dc9c6e119ef3d4696c1de69aa32624930894';
+
+/// See also [EnableSmartScanNotifier].
+@ProviderFor(EnableSmartScanNotifier)
+final enableSmartScanNotifierProvider =
+    NotifierProvider<EnableSmartScanNotifier, bool>.internal(
+      EnableSmartScanNotifier.new,
+      name: r'enableSmartScanNotifierProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$enableSmartScanNotifierHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
+
+typedef _$EnableSmartScanNotifier = Notifier<bool>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

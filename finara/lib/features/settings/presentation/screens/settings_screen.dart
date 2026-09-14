@@ -8,6 +8,7 @@ import 'package:finara/features/settings/data/theme_provider.dart';
 import 'package:finara/features/settings/data/privacy_provider.dart';
 import 'package:finara/features/settings/data/currency_provider.dart';
 import 'package:finara/features/settings/data/ui_preferences_provider.dart';
+import 'package:finara/features/settings/data/ai_provider.dart';
 import 'package:finara/core/providers/providers.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -202,6 +203,91 @@ class SettingsScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 24),
 
+          // Smart Scan & AI
+          _SectionTitle('Smart Scan & AI'),
+          const SizedBox(height: 8),
+          _SettingsCard(
+            isDark: isDark,
+            children: [
+              Consumer(
+                builder: (context, ref, child) {
+                  final enableSmartScan = ref.watch(enableSmartScanNotifierProvider);
+                  return _SettingsTile(
+                    icon: Icons.document_scanner_outlined,
+                    title: 'Enable Smart Scan',
+                    subtitle: 'Show scanner in dashboard for receipts & UPI',
+                    trailing: Switch.adaptive(
+                      value: enableSmartScan,
+                      onChanged: (val) {
+                        ref.read(enableSmartScanNotifierProvider.notifier).setEnabled(val);
+                      },
+                      activeColor: AppColors.accentViolet,
+                    ),
+                  );
+                },
+              ),
+              const Divider(height: 1),
+              Consumer(
+                builder: (context, ref, child) {
+                  final aiConfig = ref.watch(aiConfigProvider);
+                  return _SettingsTile(
+                    icon: Icons.auto_awesome_outlined,
+                    title: 'Enable AI Receipt Parsing',
+                    subtitle: 'Uses Groq API for better extraction',
+                    trailing: Switch.adaptive(
+                      value: aiConfig.isAiEnabled,
+                      onChanged: (val) {
+                        ref.read(aiConfigProvider.notifier).setAiEnabled(val);
+                      },
+                      activeColor: AppColors.accentViolet,
+                    ),
+                  );
+                },
+              ),
+              const Divider(height: 1),
+              Consumer(
+                builder: (context, ref, child) {
+                  final aiConfig = ref.watch(aiConfigProvider);
+                  return _SettingsTile(
+                    icon: Icons.key_outlined,
+                    title: 'Groq API Key',
+                    subtitle: aiConfig.groqApiKey.isEmpty ? 'Not configured' : 'Configured',
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (aiConfig.groqApiKey.isNotEmpty)
+                          Container(
+                            width: 10,
+                            height: 10,
+                            decoration: const BoxDecoration(
+                              color: Colors.green,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        const SizedBox(width: 8),
+                        Icon(Icons.chevron_right, size: 20, color: isDark ? Colors.white54 : Colors.black54),
+                      ],
+                    ),
+                    onTap: () async {
+                      // Use Future.delayed to ensure dialog pops fully before state update if needed,
+                      // or just update after popup. The key here is not passing the Consumer's context
+                      // to the dialog, but using the top-level BuildContext of SettingsScreen.
+                      // Wait, we can just use the top-level context (which is passed in the SettingsScreen build method).
+                      final newKey = await _showApiKeyDialog(context, aiConfig.groqApiKey);
+                      if (newKey != null && newKey != aiConfig.groqApiKey) {
+                        // Give it a tiny delay to allow the dialog pop animation to finish
+                        // before triggering a provider rebuild, avoiding InheritedWidget dependency crashes.
+                        await Future.delayed(const Duration(milliseconds: 300));
+                        ref.read(aiConfigProvider.notifier).setGroqApiKey(newKey);
+                      }
+                    },
+                  );
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+
           // Data
           _SectionTitle('Data Management'),
           const SizedBox(height: 8),
@@ -295,6 +381,41 @@ class SettingsScreen extends ConsumerWidget {
         );
       }
     }
+  }
+
+  Future<String?> _showApiKeyDialog(BuildContext context, String currentKey) async {
+    final controller = TextEditingController(text: currentKey);
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Groq API Key'),
+          content: TextField(
+            controller: controller,
+            obscureText: true,
+            decoration: const InputDecoration(
+              hintText: 'Enter your Groq API Key',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(null),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(controller.text.trim());
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
+
+    controller.dispose();
+    return result;
   }
 }
 

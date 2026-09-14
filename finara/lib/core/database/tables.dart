@@ -70,6 +70,9 @@ class Transactions extends Table {
   BoolColumn get isDebt => boolean().withDefault(const Constant(false))();
   IntColumn get settlementForTxnId => integer().nullable().references(Transactions, #id)();
 
+  // Smart Scan / Draft feature
+  BoolColumn get isDraft => boolean().withDefault(const Constant(false))();
+
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 }

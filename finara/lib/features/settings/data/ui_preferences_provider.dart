@@ -36,3 +36,20 @@ class EnableSplitAndSettleNotifier extends _$EnableSplitAndSettleNotifier {
         .setBool('enable_split_and_settle', isEnabled);
   }
 }
+
+@Riverpod(keepAlive: true)
+class EnableSmartScanNotifier extends _$EnableSmartScanNotifier {
+  @override
+  bool build() {
+    final prefs = ref.watch(sharedPreferencesProvider);
+    // Enabled by default
+    return prefs.getBool('enable_smart_scan') ?? true;
+  }
+
+  void setEnabled(bool isEnabled) {
+    state = isEnabled;
+    ref
+        .read(sharedPreferencesProvider)
+        .setBool('enable_smart_scan', isEnabled);
+  }
+}

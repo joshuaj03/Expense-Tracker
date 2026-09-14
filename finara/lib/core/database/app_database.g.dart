@@ -1692,6 +1692,21 @@ class $TransactionsTable extends Transactions
       'REFERENCES transactions (id)',
     ),
   );
+  static const VerificationMeta _isDraftMeta = const VerificationMeta(
+    'isDraft',
+  );
+  @override
+  late final GeneratedColumn<bool> isDraft = GeneratedColumn<bool>(
+    'is_draft',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_draft" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -1737,6 +1752,7 @@ class $TransactionsTable extends Transactions
     isFullySettled,
     isDebt,
     settlementForTxnId,
+    isDraft,
     createdAt,
     updatedAt,
   ];
@@ -1895,6 +1911,12 @@ class $TransactionsTable extends Transactions
         ),
       );
     }
+    if (data.containsKey('is_draft')) {
+      context.handle(
+        _isDraftMeta,
+        isDraft.isAcceptableOrUnknown(data['is_draft']!, _isDraftMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -1992,6 +2014,10 @@ class $TransactionsTable extends Transactions
         DriftSqlType.int,
         data['${effectivePrefix}settlement_for_txn_id'],
       ),
+      isDraft: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_draft'],
+      )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -2029,6 +2055,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
   final bool isFullySettled;
   final bool isDebt;
   final int? settlementForTxnId;
+  final bool isDraft;
   final DateTime createdAt;
   final DateTime updatedAt;
   const Transaction({
@@ -2051,6 +2078,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     required this.isFullySettled,
     required this.isDebt,
     this.settlementForTxnId,
+    required this.isDraft,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -2088,6 +2116,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     if (!nullToAbsent || settlementForTxnId != null) {
       map['settlement_for_txn_id'] = Variable<int>(settlementForTxnId);
     }
+    map['is_draft'] = Variable<bool>(isDraft);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -2126,6 +2155,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       settlementForTxnId: settlementForTxnId == null && nullToAbsent
           ? const Value.absent()
           : Value(settlementForTxnId),
+      isDraft: Value(isDraft),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -2158,6 +2188,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       isFullySettled: serializer.fromJson<bool>(json['isFullySettled']),
       isDebt: serializer.fromJson<bool>(json['isDebt']),
       settlementForTxnId: serializer.fromJson<int?>(json['settlementForTxnId']),
+      isDraft: serializer.fromJson<bool>(json['isDraft']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -2187,6 +2218,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       'isFullySettled': serializer.toJson<bool>(isFullySettled),
       'isDebt': serializer.toJson<bool>(isDebt),
       'settlementForTxnId': serializer.toJson<int?>(settlementForTxnId),
+      'isDraft': serializer.toJson<bool>(isDraft),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -2212,6 +2244,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     bool? isFullySettled,
     bool? isDebt,
     Value<int?> settlementForTxnId = const Value.absent(),
+    bool? isDraft,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => Transaction(
@@ -2241,6 +2274,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     settlementForTxnId: settlementForTxnId.present
         ? settlementForTxnId.value
         : this.settlementForTxnId,
+    isDraft: isDraft ?? this.isDraft,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -2283,6 +2317,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       settlementForTxnId: data.settlementForTxnId.present
           ? data.settlementForTxnId.value
           : this.settlementForTxnId,
+      isDraft: data.isDraft.present ? data.isDraft.value : this.isDraft,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -2310,6 +2345,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           ..write('isFullySettled: $isFullySettled, ')
           ..write('isDebt: $isDebt, ')
           ..write('settlementForTxnId: $settlementForTxnId, ')
+          ..write('isDraft: $isDraft, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -2337,6 +2373,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     isFullySettled,
     isDebt,
     settlementForTxnId,
+    isDraft,
     createdAt,
     updatedAt,
   ]);
@@ -2363,6 +2400,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           other.isFullySettled == this.isFullySettled &&
           other.isDebt == this.isDebt &&
           other.settlementForTxnId == this.settlementForTxnId &&
+          other.isDraft == this.isDraft &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -2387,6 +2425,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
   final Value<bool> isFullySettled;
   final Value<bool> isDebt;
   final Value<int?> settlementForTxnId;
+  final Value<bool> isDraft;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   const TransactionsCompanion({
@@ -2409,6 +2448,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     this.isFullySettled = const Value.absent(),
     this.isDebt = const Value.absent(),
     this.settlementForTxnId = const Value.absent(),
+    this.isDraft = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   });
@@ -2432,6 +2472,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     this.isFullySettled = const Value.absent(),
     this.isDebt = const Value.absent(),
     this.settlementForTxnId = const Value.absent(),
+    this.isDraft = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   }) : type = Value(type),
@@ -2458,6 +2499,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     Expression<bool>? isFullySettled,
     Expression<bool>? isDebt,
     Expression<int>? settlementForTxnId,
+    Expression<bool>? isDraft,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
   }) {
@@ -2483,6 +2525,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       if (isDebt != null) 'is_debt': isDebt,
       if (settlementForTxnId != null)
         'settlement_for_txn_id': settlementForTxnId,
+      if (isDraft != null) 'is_draft': isDraft,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
@@ -2508,6 +2551,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     Value<bool>? isFullySettled,
     Value<bool>? isDebt,
     Value<int?>? settlementForTxnId,
+    Value<bool>? isDraft,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
   }) {
@@ -2532,6 +2576,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       isFullySettled: isFullySettled ?? this.isFullySettled,
       isDebt: isDebt ?? this.isDebt,
       settlementForTxnId: settlementForTxnId ?? this.settlementForTxnId,
+      isDraft: isDraft ?? this.isDraft,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -2599,6 +2644,9 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     if (settlementForTxnId.present) {
       map['settlement_for_txn_id'] = Variable<int>(settlementForTxnId.value);
     }
+    if (isDraft.present) {
+      map['is_draft'] = Variable<bool>(isDraft.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -2630,6 +2678,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
           ..write('isFullySettled: $isFullySettled, ')
           ..write('isDebt: $isDebt, ')
           ..write('settlementForTxnId: $settlementForTxnId, ')
+          ..write('isDraft: $isDraft, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -4952,6 +5001,7 @@ typedef $$TransactionsTableCreateCompanionBuilder =
       Value<bool> isFullySettled,
       Value<bool> isDebt,
       Value<int?> settlementForTxnId,
+      Value<bool> isDraft,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
     });
@@ -4976,6 +5026,7 @@ typedef $$TransactionsTableUpdateCompanionBuilder =
       Value<bool> isFullySettled,
       Value<bool> isDebt,
       Value<int?> settlementForTxnId,
+      Value<bool> isDraft,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
     });
@@ -5145,6 +5196,11 @@ class $$TransactionsTableFilterComposer
 
   ColumnFilters<bool> get isDebt => $composableBuilder(
     column: $table.isDebt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isDraft => $composableBuilder(
+    column: $table.isDraft,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -5335,6 +5391,11 @@ class $$TransactionsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get isDraft => $composableBuilder(
+    column: $table.isDraft,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -5504,6 +5565,9 @@ class $$TransactionsTableAnnotationComposer
   GeneratedColumn<bool> get isDebt =>
       $composableBuilder(column: $table.isDebt, builder: (column) => column);
 
+  GeneratedColumn<bool> get isDraft =>
+      $composableBuilder(column: $table.isDraft, builder: (column) => column);
+
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
@@ -5655,6 +5719,7 @@ class $$TransactionsTableTableManager
                 Value<bool> isFullySettled = const Value.absent(),
                 Value<bool> isDebt = const Value.absent(),
                 Value<int?> settlementForTxnId = const Value.absent(),
+                Value<bool> isDraft = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => TransactionsCompanion(
@@ -5677,6 +5742,7 @@ class $$TransactionsTableTableManager
                 isFullySettled: isFullySettled,
                 isDebt: isDebt,
                 settlementForTxnId: settlementForTxnId,
+                isDraft: isDraft,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),
@@ -5701,6 +5767,7 @@ class $$TransactionsTableTableManager
                 Value<bool> isFullySettled = const Value.absent(),
                 Value<bool> isDebt = const Value.absent(),
                 Value<int?> settlementForTxnId = const Value.absent(),
+                Value<bool> isDraft = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => TransactionsCompanion.insert(
@@ -5723,6 +5790,7 @@ class $$TransactionsTableTableManager
                 isFullySettled: isFullySettled,
                 isDebt: isDebt,
                 settlementForTxnId: settlementForTxnId,
+                isDraft: isDraft,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),
