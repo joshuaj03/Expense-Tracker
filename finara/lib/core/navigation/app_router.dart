@@ -1,6 +1,6 @@
 /// go_router navigation configuration for Finara v0.2.
-/// 5-tab bottom nav: Home, Records, Accounts, Budgets, Analytics
-/// Settings moved to side drawer.
+/// 4-tab bottom nav: Home, Records, Analytics, Accounts
+/// Settings and Budgets moved to side drawer.
 library;
 
 import 'package:flutter/material.dart';
@@ -10,6 +10,7 @@ import '../../features/dashboard/presentation/screens/dashboard_screen.dart';
 import '../../features/transactions/presentation/screens/transactions_screen.dart';
 import '../../features/transactions/presentation/screens/add_transaction_screen.dart';
 import '../../features/analytics/presentation/screens/analytics_screen.dart';
+import '../../features/smart_scan/presentation/screens/scanner_screen.dart';
 import '../../features/settings/presentation/screens/settings_screen.dart';
 import '../../features/accounts/presentation/screens/accounts_screen.dart';
 import '../../features/accounts/presentation/screens/account_detail_screen.dart';
@@ -73,15 +74,6 @@ final appRouter = GoRouter(
             ),
           ],
         ),
-        StatefulShellBranch(
-          routes: [
-            GoRoute(
-              path: '/budgets',
-              pageBuilder: (context, state) =>
-                  const NoTransitionPage(child: BudgetsScreen()),
-            ),
-          ],
-        ),
       ],
     ),
 
@@ -118,6 +110,11 @@ final appRouter = GoRouter(
       },
     ),
     GoRoute(
+      path: '/smart-scan',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const ScannerScreen(),
+    ),
+    GoRoute(
       path: '/add-account',
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) => const AddAccountScreen(),
@@ -144,6 +141,11 @@ final appRouter = GoRouter(
       builder: (context, state) => const CategoriesScreen(),
     ),
     GoRoute(
+      path: '/budgets',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const BudgetsScreen(),
+    ),
+    GoRoute(
       path: '/search',
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) => const SearchScreen(),
@@ -166,7 +168,7 @@ final appRouter = GoRouter(
   ],
 );
 
-/// App shell with 5-tab bottom navigation and side drawer.
+/// App shell with 4-tab bottom navigation and side drawer.
 class _AppShell extends StatelessWidget {
   final StatefulNavigationShell navigationShell;
 
@@ -227,14 +229,6 @@ class _AppShell extends StatelessWidget {
                 color: AppColors.accentViolet,
               ),
               label: 'Accounts',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.pie_chart_outline),
-              selectedIcon: Icon(
-                Icons.pie_chart,
-                color: AppColors.accentViolet,
-              ),
-              label: 'Budgets',
             ),
           ],
         ),
